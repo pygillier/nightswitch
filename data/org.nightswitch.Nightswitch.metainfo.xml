@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.nightswitch.Nightswitch</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Nightswitch</name>
+  <summary>Theme switcher for Linux desktop environments</summary>
+  <description>
+    <p>
+      Nightswitch is a PyGTK 4 application that provides comprehensive theme switching
+      functionality for Linux desktop environments. It offers multiple modes for
+      managing dark and light themes automatically or manually.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Manual theme switching via system tray interface</li>
+      <li>Schedule-based automatic theme switching</li>
+      <li>Location-based sunrise/sunset theme switching</li>
+      <li>Support for multiple desktop environments through plugins</li>
+      <li>Minimal system tray integration</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">org.nightswitch.Nightswitch.desktop</launchable>
+  <provides>
+    <binary>nightswitch</binary>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <caption>System tray menu showing theme switching options</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/nightswitch/nightswitch</url>
+  <url type="bugtracker">https://github.com/nightswitch/nightswitch/issues</url>
+  <developer_name>Nightswitch Team</developer_name>
+  <update_contact>team@nightswitch.org</update_contact>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2025-01-16">
+      <description>
+        <p>Initial release of Nightswitch with basic theme switching functionality.</p>
+      </description>
+    </release>
+  </releases>
+  <categories>
+    <category>Utility</category>
+    <category>Settings</category>
+  </categories>
+  <keywords>
+    <keyword>theme</keyword>
+    <keyword>dark</keyword>
+    <keyword>light</keyword>
+    <keyword>night</keyword>
+    <keyword>mode</keyword>
+    <keyword>switch</keyword>
+  </keywords>
+</component>

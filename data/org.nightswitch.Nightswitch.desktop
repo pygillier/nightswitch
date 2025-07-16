@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Nightswitch
+GenericName=Theme Switcher
+Comment=Manage night mode and theme switching in Linux desktop environments
+Exec=nightswitch
+Icon=org.nightswitch.Nightswitch
+Terminal=false
+NoDisplay=true
+StartupNotify=false
+Categories=Utility;Settings;DesktopSettings;
+Keywords=theme;dark;light;night;mode;switch;
+X-GNOME-Autostart-Phase=Applications
+X-GNOME-AutoRestart=true
+X-GNOME-UsesNotifications=true
