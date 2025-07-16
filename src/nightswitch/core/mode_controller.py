@@ -13,6 +13,7 @@ from ..plugins.manager import PluginManager, get_plugin_manager
 from .config import AppConfig, ConfigManager, get_config
 from .manual_mode import ManualModeHandler, get_manual_mode_handler, ThemeType
 from .schedule_mode import ScheduleModeHandler, get_schedule_mode_handler
+from .location_mode import LocationModeHandler, get_location_mode_handler
 
 
 class ThemeMode(Enum):
@@ -37,6 +38,7 @@ class ModeController:
         plugin_manager: Optional[PluginManager] = None,
         manual_mode_handler: Optional[ManualModeHandler] = None,
         schedule_mode_handler: Optional[ScheduleModeHandler] = None,
+        location_mode_handler: Optional[LocationModeHandler] = None,
     ):
         """
         Initialize the mode controller.
@@ -52,6 +54,7 @@ class ModeController:
         self._plugin_manager = plugin_manager or get_plugin_manager()
         self._manual_mode_handler = manual_mode_handler or get_manual_mode_handler()
         self._schedule_mode_handler = schedule_mode_handler or get_schedule_mode_handler()
+        self._location_mode_handler = location_mode_handler or get_location_mode_handler()
 
         # Current state
         self._current_mode: Optional[ThemeMode] = None
@@ -131,6 +134,12 @@ class ModeController:
             
             # Set up theme callback for schedule mode handler
             self._schedule_mode_handler.set_theme_callback(self.apply_theme)
+            
+            # Register location mode handler
+            self.register_mode_handler(ThemeMode.LOCATION, self._location_mode_handler)
+            
+            # Set up theme callback for location mode handler
+            self._location_mode_handler.set_theme_callback(self.apply_theme)
             
             self.logger.debug("Set up mode handlers")
             

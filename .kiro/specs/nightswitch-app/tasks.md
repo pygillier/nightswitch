@@ -49,14 +49,14 @@
   - Write unit tests for schedule service timing accuracy
   - _Requirements: 2.3, 2.4_
 
-- [ ] 8. Implement location and sunrise/sunset services
+- [x] 8. Implement location and sunrise/sunset services
   - Create LocationService class for IP-based location detection
   - Implement SunriseSunsetService class using sunrisesunset.io API
   - Add location validation and manual location input fallback
   - Write unit tests for location detection and API integration
   - _Requirements: 3.2, 3.3, 3.7_
 
-- [ ] 9. Create location mode handler
+- [-] 9. Create location mode handler
   - Implement LocationModeHandler integrating location and sunrise/sunset services
   - Add automatic sunrise/sunset theme switching functionality using sunrisesunset.io API
   - Implement error handling for API failures and network issues
