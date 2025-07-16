@@ -106,9 +106,14 @@ nightswitch
 
 ### Configuration
 
-Nightswitch stores its configuration in standard XDG directories:
-- **Config**: `~/.config/nightswitch/`
-- **Data**: `~/.local/share/nightswitch/`
+Nightswitch follows the FreeDesktop.org XDG Base Directory Specification for configuration storage:
+
+- **Configuration**: `~/.config/nightswitch/` (or `$XDG_CONFIG_HOME/nightswitch/`)
+- **Application Data**: `~/.local/share/nightswitch/` (or `$XDG_DATA_HOME/nightswitch/`)
+- **Cache**: `~/.cache/nightswitch/` (or `$XDG_CACHE_HOME/nightswitch/`)
+- **State**: `~/.local/state/nightswitch/` (or `$XDG_STATE_HOME/nightswitch/`)
+
+The main configuration file is stored as `config.json` in the configuration directory.
 
 ## 🛠️ Development
 
@@ -128,22 +133,24 @@ pip install -e ".[dev]"
 
 ### Development Workflow
 
+**Important**: This project uses `uv` for all Python operations. Never use `pip` or direct `python` commands.
+
 ```bash
 # Run tests
-pytest
+uv run pytest
 
 # Code formatting
-black src tests
-isort src tests
+uv run black src tests
+uv run isort src tests
 
 # Type checking
-mypy src
+uv run mypy src
 
 # Linting
-flake8 src tests
+uv run flake8 src tests
 
 # Run all checks
-pytest && black --check src tests && isort --check src tests && mypy src && flake8 src tests
+uv run pytest && uv run black --check src tests && uv run isort --check src tests && uv run mypy src && uv run flake8 src tests
 ```
 
 ### Testing
@@ -152,14 +159,14 @@ The project includes comprehensive test coverage:
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=src/nightswitch --cov-report=html
+uv run pytest --cov=src/nightswitch --cov-report=html
 
 # Run specific test categories
-pytest -m unit          # Unit tests only
-pytest -m integration   # Integration tests only
+uv run pytest -m unit          # Unit tests only
+uv run pytest -m integration   # Integration tests only
 ```
 
 ## 🏗️ Architecture
@@ -203,8 +210,8 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass (`pytest`)
-6. Format code (`black src tests && isort src tests`)
+5. Ensure all tests pass (`uv run pytest`)
+6. Format code (`uv run black src tests && uv run isort src tests`)
 7. Commit changes (`git commit -m 'Add amazing feature'`)
 8. Push to branch (`git push origin feature/amazing-feature`)
 9. Open a Pull Request

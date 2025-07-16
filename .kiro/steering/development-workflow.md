@@ -60,9 +60,14 @@ git commit -m "feat: implement theme switching core functionality
 
 ## Development Standards
 
+### Python Environment
+- **MANDATORY**: All Python operations must use `uv` (see python-uv-requirements.md)
+- Never use `pip` or direct `python` commands
+- All commands must be prefixed with `uv run`
+
 ### Code Quality
-- All code must pass type checking with mypy
-- Code must be formatted with black and isort
+- All code must pass type checking with `uv run mypy src`
+- Code must be formatted with `uv run black src tests` and `uv run isort src tests`
 - All new functionality requires unit tests
 - Integration tests for user-facing features
 
@@ -71,6 +76,7 @@ git commit -m "feat: implement theme switching core functionality
 - All public APIs must have tests
 - Mock external dependencies in unit tests
 - Integration tests for plugin system
+- Run tests with `uv run pytest`
 
 ### Documentation
 - All modules must have docstrings
@@ -84,9 +90,9 @@ For each completed task:
 
 1. ✅ Implement the functionality
 2. ✅ Write/update tests
-3. ✅ Run test suite (`pytest`)
-4. ✅ Format code (`black src tests && isort src tests`)
-5. ✅ Type check (`mypy src`)
+3. ✅ Run test suite (`uv run pytest`)
+4. ✅ Format code (`uv run black src tests && uv run isort src tests`)
+5. ✅ Type check (`uv run mypy src`)
 6. ✅ Update documentation if needed
 7. ✅ **Commit changes to git**
 8. ✅ Mark task as complete in tasks.md
