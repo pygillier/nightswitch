@@ -17,6 +17,7 @@ from src.nightswitch.core.mode_controller import (
     ThemeType,
     get_mode_controller,
 )
+from src.nightswitch.core.manual_mode import ManualModeHandler
 from src.nightswitch.plugins.base import ThemePlugin
 from src.nightswitch.plugins.manager import PluginManager
 
@@ -122,7 +123,19 @@ def mock_plugin_manager():
 
 
 @pytest.fixture
-def mode_controller(mock_config_manager, mock_plugin_manager):
+def mock_manual_mode_handler():
+    """Create a mock manual mode handler."""
+    handler = Mock(spec=ManualModeHandler)
+    handler._current_theme = None
+    handler.switch_to_dark.return_value = True
+    handler.switch_to_light.return_value = True
+    handler.toggle_theme.return_value = True
+    handler.add_theme_change_callback = Mock()
+    return handler
+
+
+@pytest.fixture
+def mode_controller(mock_config_manager, mock_plugin_manager, mock_manual_mode_handler):
     """Create a mode controller with mocked dependencies."""
     with (
         patch(
@@ -133,8 +146,12 @@ def mode_controller(mock_config_manager, mock_plugin_manager):
             "src.nightswitch.core.mode_controller.get_plugin_manager",
             return_value=mock_plugin_manager,
         ),
+        patch(
+            "src.nightswitch.core.mode_controller.get_manual_mode_handler",
+            return_value=mock_manual_mode_handler,
+        ),
     ):
-        controller = ModeController(mock_config_manager, mock_plugin_manager)
+        controller = ModeController(mock_config_manager, mock_plugin_manager, mock_manual_mode_handler)
         return controller
 
 
@@ -628,6 +645,133 @@ class TestValidation:
         assert mode_controller._validate_coordinates(-91, 0) is False
         assert mode_controller._validate_coordinates(0, 181) is False
         assert mode_controller._validate_coordinates(0, -181) is False
+
+
+class TestManualModeIntegration:
+    """Test manual mode handler integration."""
+
+    def test_manual_switch_to_dark_in_manual_mode(self, mode_controller):
+        """Test manual switch to dark when already in manual mode."""
+        mode_controller._current_mode = ThemeMode.MANUAL
+
+        result = mode_controller.manual_switch_to_dark()
+
+        assert result is True
+        mode_controller._manual_mode_handler.switch_to_dark.assert_called_once()
+
+    def test_manual_switch_to_dark_from_other_mode(self, mode_controller):
+        """Test manual switch to dark when in another mode."""
+        # Set up schedule mode
+        handler = MockModeHandler()
+        mode_controller.register_mode_handler(ThemeMode.SCHEDULE, handler)
+        mode_controller._current_mode = ThemeMode.SCHEDULE
+        mode_controller._active_handler = handler
+
+        result = mode_controller.manual_switch_to_dark()
+
+        assert result is True
+        # Should switch to manual mode first
+        assert mode_controller._current_mode == ThemeMode.MANUAL
+        assert handler.disabled is True
+        mode_controller._manual_mode_handler.switch_to_dark.assert_called_once()
+
+    def test_manual_switch_to_light_in_manual_mode(self, mode_controller):
+        """Test manual switch to light when already in manual mode."""
+        mode_controller._current_mode = ThemeMode.MANUAL
+
+        result = mode_controller.manual_switch_to_light()
+
+        assert result is True
+        mode_controller._manual_mode_handler.switch_to_light.assert_called_once()
+
+    def test_manual_switch_to_light_from_other_mode(self, mode_controller):
+        """Test manual switch to light when in another mode."""
+        # Set up schedule mode
+        handler = MockModeHandler()
+        mode_controller.register_mode_handler(ThemeMode.SCHEDULE, handler)
+        mode_controller._current_mode = ThemeMode.SCHEDULE
+        mode_controller._active_handler = handler
+
+        result = mode_controller.manual_switch_to_light()
+
+        assert result is True
+        # Should switch to manual mode first
+        assert mode_controller._current_mode == ThemeMode.MANUAL
+        assert handler.disabled is True
+        mode_controller._manual_mode_handler.switch_to_light.assert_called_once()
+
+    def test_manual_toggle_theme_in_manual_mode(self, mode_controller):
+        """Test manual toggle theme when already in manual mode."""
+        mode_controller._current_mode = ThemeMode.MANUAL
+
+        result = mode_controller.manual_toggle_theme()
+
+        assert result is True
+        mode_controller._manual_mode_handler.toggle_theme.assert_called_once()
+
+    def test_manual_toggle_theme_from_other_mode(self, mode_controller):
+        """Test manual toggle theme when in another mode."""
+        # Set up location mode
+        handler = MockModeHandler()
+        mode_controller.register_mode_handler(ThemeMode.LOCATION, handler)
+        mode_controller._current_mode = ThemeMode.LOCATION
+        mode_controller._active_handler = handler
+
+        result = mode_controller.manual_toggle_theme()
+
+        assert result is True
+        # Should switch to manual mode first
+        assert mode_controller._current_mode == ThemeMode.MANUAL
+        assert handler.disabled is True
+        mode_controller._manual_mode_handler.toggle_theme.assert_called_once()
+
+    def test_manual_switch_mode_change_failure(self, mode_controller):
+        """Test manual switch when mode change fails."""
+        # Set up schedule mode
+        handler = MockModeHandler()
+        mode_controller.register_mode_handler(ThemeMode.SCHEDULE, handler)
+        mode_controller._current_mode = ThemeMode.SCHEDULE
+        mode_controller._active_handler = handler
+
+        # Make set_manual_mode fail by making apply_theme fail
+        plugin = mode_controller._plugin_manager.get_active_plugin()
+        plugin.apply_dark_theme = Mock(return_value=False)
+
+        # This should fail because set_manual_mode will fail
+        with patch.object(mode_controller, 'set_manual_mode', return_value=False):
+            result = mode_controller.manual_switch_to_dark()
+
+        assert result is False
+        mode_controller._manual_mode_handler.switch_to_dark.assert_not_called()
+
+    def test_manual_switch_handler_failure(self, mode_controller):
+        """Test manual switch when handler fails."""
+        mode_controller._current_mode = ThemeMode.MANUAL
+        mode_controller._manual_mode_handler.switch_to_dark.return_value = False
+
+        result = mode_controller.manual_switch_to_dark()
+
+        assert result is False
+
+    def test_manual_switch_exception_handling(self, mode_controller):
+        """Test manual switch exception handling."""
+        mode_controller._current_mode = ThemeMode.MANUAL
+        mode_controller._manual_mode_handler.switch_to_dark.side_effect = Exception("Handler error")
+
+        result = mode_controller.manual_switch_to_dark()
+
+        assert result is False
+
+    def test_get_manual_mode_handler(self, mode_controller):
+        """Test getting manual mode handler."""
+        handler = mode_controller.get_manual_mode_handler()
+
+        assert handler is mode_controller._manual_mode_handler
+
+    def test_manual_mode_callback_setup(self, mode_controller):
+        """Test that manual mode callbacks are set up correctly."""
+        # Verify that callback was added to manual mode handler
+        mode_controller._manual_mode_handler.add_theme_change_callback.assert_called_once()
 
 
 class TestCleanup:

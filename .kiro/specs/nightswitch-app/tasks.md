@@ -28,14 +28,14 @@
   - Write unit tests for Ubuntu Budgie plugin functionality
   - _Requirements: 4.1, 4.2_
 
-- [-] 5. Create mode controller and management system
+- [x] 5. Create mode controller and management system
   - Implement ModeController class for coordinating theme switching modes
   - Add mode conflict resolution logic to prevent simultaneous modes
   - Create state management for current active mode and settings
   - Write unit tests for mode controller functionality
   - _Requirements: 2.5, 3.6, 6.4_
 
-- [ ] 6. Implement manual mode functionality
+- [-] 6. Implement manual mode functionality
   - Create manual mode handler for direct theme switching
   - Integrate manual mode with plugin manager for theme application
   - Add immediate theme switching with visual feedback

@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, Optional
 
 from ..plugins.manager import PluginManager, get_plugin_manager
 from .config import AppConfig, ConfigManager, get_config
+from .manual_mode import ManualModeHandler, get_manual_mode_handler, ThemeType
 
 
 class ThemeMode(Enum):
@@ -19,13 +20,6 @@ class ThemeMode(Enum):
     MANUAL = "manual"
     SCHEDULE = "schedule"
     LOCATION = "location"
-
-
-class ThemeType(Enum):
-    """Enumeration of theme types."""
-
-    LIGHT = "light"
-    DARK = "dark"
 
 
 class ModeController:
@@ -40,6 +34,7 @@ class ModeController:
         self,
         config_manager: Optional[ConfigManager] = None,
         plugin_manager: Optional[PluginManager] = None,
+        manual_mode_handler: Optional[ManualModeHandler] = None,
     ):
         """
         Initialize the mode controller.
@@ -47,10 +42,12 @@ class ModeController:
         Args:
             config_manager: Configuration manager instance
             plugin_manager: Plugin manager instance
+            manual_mode_handler: Manual mode handler instance
         """
         self.logger = logging.getLogger("nightswitch.core.mode_controller")
         self._config_manager = config_manager or get_config()
         self._plugin_manager = plugin_manager or get_plugin_manager()
+        self._manual_mode_handler = manual_mode_handler or get_manual_mode_handler()
 
         # Current state
         self._current_mode: Optional[ThemeMode] = None
@@ -66,6 +63,9 @@ class ModeController:
 
         # Initialize from configuration
         self._load_state_from_config()
+        
+        # Set up manual mode handler callbacks
+        self._setup_manual_mode_callbacks()
 
     def _load_state_from_config(self) -> None:
         """Load current state from configuration."""
@@ -115,6 +115,22 @@ class ModeController:
 
         except Exception as e:
             self.logger.error(f"Failed to save state to config: {e}")
+
+    def _setup_manual_mode_callbacks(self) -> None:
+        """Set up callbacks for manual mode handler integration."""
+        try:
+            # Add theme change callback to sync with manual mode handler
+            def sync_theme_with_manual_handler(theme: ThemeType) -> None:
+                """Sync theme changes with manual mode handler."""
+                if self._current_mode == ThemeMode.MANUAL:
+                    self._manual_mode_handler._current_theme = theme
+
+            self._manual_mode_handler.add_theme_change_callback(sync_theme_with_manual_handler)
+            
+            self.logger.debug("Set up manual mode handler callbacks")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to set up manual mode callbacks: {e}")
 
     def register_mode_handler(self, mode: ThemeMode, handler: Any) -> None:
         """
@@ -200,6 +216,84 @@ class ModeController:
         except Exception as e:
             self.logger.error(f"Failed to set manual mode: {e}")
             return False
+
+    def manual_switch_to_dark(self) -> bool:
+        """
+        Immediately switch to dark theme using manual mode.
+        
+        This method ensures manual mode is active and applies dark theme
+        with visual feedback through the manual mode handler.
+
+        Returns:
+            True if theme was applied successfully, False otherwise
+        """
+        try:
+            # Ensure we're in manual mode
+            if self._current_mode != ThemeMode.MANUAL:
+                if not self.set_manual_mode():
+                    return False
+
+            # Use manual mode handler for immediate switching with feedback
+            return self._manual_mode_handler.switch_to_dark()
+
+        except Exception as e:
+            self.logger.error(f"Failed to manually switch to dark theme: {e}")
+            return False
+
+    def manual_switch_to_light(self) -> bool:
+        """
+        Immediately switch to light theme using manual mode.
+        
+        This method ensures manual mode is active and applies light theme
+        with visual feedback through the manual mode handler.
+
+        Returns:
+            True if theme was applied successfully, False otherwise
+        """
+        try:
+            # Ensure we're in manual mode
+            if self._current_mode != ThemeMode.MANUAL:
+                if not self.set_manual_mode():
+                    return False
+
+            # Use manual mode handler for immediate switching with feedback
+            return self._manual_mode_handler.switch_to_light()
+
+        except Exception as e:
+            self.logger.error(f"Failed to manually switch to light theme: {e}")
+            return False
+
+    def manual_toggle_theme(self) -> bool:
+        """
+        Toggle between dark and light themes using manual mode.
+        
+        This method ensures manual mode is active and toggles the theme
+        with visual feedback through the manual mode handler.
+
+        Returns:
+            True if theme was toggled successfully, False otherwise
+        """
+        try:
+            # Ensure we're in manual mode
+            if self._current_mode != ThemeMode.MANUAL:
+                if not self.set_manual_mode():
+                    return False
+
+            # Use manual mode handler for immediate toggling with feedback
+            return self._manual_mode_handler.toggle_theme()
+
+        except Exception as e:
+            self.logger.error(f"Failed to manually toggle theme: {e}")
+            return False
+
+    def get_manual_mode_handler(self) -> ManualModeHandler:
+        """
+        Get the manual mode handler instance.
+        
+        Returns:
+            ManualModeHandler instance
+        """
+        return self._manual_mode_handler
 
     def set_schedule_mode(self, dark_time: str, light_time: str) -> bool:
         """
