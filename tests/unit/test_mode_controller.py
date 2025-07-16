@@ -322,6 +322,9 @@ class TestScheduleMode:
 
     def test_set_schedule_mode_no_handler(self, mode_controller):
         """Test schedule mode when no handler is registered."""
+        # Unregister the schedule handler to test the no-handler scenario
+        mode_controller.unregister_mode_handler(ThemeMode.SCHEDULE)
+        
         result = mode_controller.set_schedule_mode("19:00", "07:00")
 
         assert result is False

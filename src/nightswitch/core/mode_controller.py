@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Optional
 from ..plugins.manager import PluginManager, get_plugin_manager
 from .config import AppConfig, ConfigManager, get_config
 from .manual_mode import ManualModeHandler, get_manual_mode_handler, ThemeType
+from .schedule_mode import ScheduleModeHandler, get_schedule_mode_handler
 
 
 class ThemeMode(Enum):
@@ -35,6 +36,7 @@ class ModeController:
         config_manager: Optional[ConfigManager] = None,
         plugin_manager: Optional[PluginManager] = None,
         manual_mode_handler: Optional[ManualModeHandler] = None,
+        schedule_mode_handler: Optional[ScheduleModeHandler] = None,
     ):
         """
         Initialize the mode controller.
@@ -43,11 +45,13 @@ class ModeController:
             config_manager: Configuration manager instance
             plugin_manager: Plugin manager instance
             manual_mode_handler: Manual mode handler instance
+            schedule_mode_handler: Schedule mode handler instance
         """
         self.logger = logging.getLogger("nightswitch.core.mode_controller")
         self._config_manager = config_manager or get_config()
         self._plugin_manager = plugin_manager or get_plugin_manager()
         self._manual_mode_handler = manual_mode_handler or get_manual_mode_handler()
+        self._schedule_mode_handler = schedule_mode_handler or get_schedule_mode_handler()
 
         # Current state
         self._current_mode: Optional[ThemeMode] = None
@@ -63,6 +67,9 @@ class ModeController:
 
         # Initialize from configuration
         self._load_state_from_config()
+        
+        # Set up mode handlers
+        self._setup_mode_handlers()
         
         # Set up manual mode handler callbacks
         self._setup_manual_mode_callbacks()
@@ -115,6 +122,20 @@ class ModeController:
 
         except Exception as e:
             self.logger.error(f"Failed to save state to config: {e}")
+
+    def _setup_mode_handlers(self) -> None:
+        """Set up mode handlers and their callbacks."""
+        try:
+            # Register schedule mode handler
+            self.register_mode_handler(ThemeMode.SCHEDULE, self._schedule_mode_handler)
+            
+            # Set up theme callback for schedule mode handler
+            self._schedule_mode_handler.set_theme_callback(self.apply_theme)
+            
+            self.logger.debug("Set up mode handlers")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to set up mode handlers: {e}")
 
     def _setup_manual_mode_callbacks(self) -> None:
         """Set up callbacks for manual mode handler integration."""

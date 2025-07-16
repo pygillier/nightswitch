@@ -35,14 +35,14 @@
   - Write unit tests for mode controller functionality
   - _Requirements: 2.5, 3.6, 6.4_
 
-- [-] 6. Implement manual mode functionality
+- [x] 6. Implement manual mode functionality
   - Create manual mode handler for direct theme switching
   - Integrate manual mode with plugin manager for theme application
   - Add immediate theme switching with visual feedback
   - Write unit tests for manual mode operations
   - _Requirements: 1.4, 1.5, 1.6_
 
-- [ ] 7. Build schedule service and mode handler
+- [-] 7. Build schedule service and mode handler
   - Create ScheduleService class for time-based theme switching
   - Implement ScheduleModeHandler with time validation and scheduling
   - Add recurring timer functionality for automatic theme changes
