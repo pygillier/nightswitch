@@ -2,7 +2,8 @@
 Main entry point for the Nightswitch application.
 """
 
-def main():
+
+def main() -> None:
     """Main entry point for the Nightswitch application."""
     print("Nightswitch application starting...")
     # Application initialization will be implemented in later tasks

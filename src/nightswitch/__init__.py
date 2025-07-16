@@ -3,7 +3,7 @@ Nightswitch - A PyGTK 4 application for managing night mode in Linux desktop env
 
 This package provides comprehensive theme switching functionality through multiple modes:
 - Manual mode for direct user control
-- Schedule mode for time-based automatic switching  
+- Schedule mode for time-based automatic switching
 - Location mode for sunrise/sunset-based switching
 
 The application uses a plugin system to support different desktop environments.
