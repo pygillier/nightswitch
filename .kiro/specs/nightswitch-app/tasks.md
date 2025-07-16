@@ -21,14 +21,14 @@
   - Write unit tests for plugin system core functionality
   - _Requirements: 4.1, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 4. Implement Ubuntu Budgie theme plugin
+- [x] 4. Implement Ubuntu Budgie theme plugin
   - Create UbuntuBudgiePlugin class implementing ThemePlugin interface
   - Implement gsettings-based color scheme switching using 'org.gnome.desktop.interface color-scheme'
   - Add desktop environment detection for Ubuntu Budgie
   - Write unit tests for Ubuntu Budgie plugin functionality
   - _Requirements: 4.1, 4.2_
 
-- [ ] 5. Create mode controller and management system
+- [-] 5. Create mode controller and management system
   - Implement ModeController class for coordinating theme switching modes
   - Add mode conflict resolution logic to prevent simultaneous modes
   - Create state management for current active mode and settings

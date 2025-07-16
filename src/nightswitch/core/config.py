@@ -44,9 +44,9 @@ class AppConfig:
 
     # Plugin settings
     active_plugin: str = "auto"  # 'auto', 'budgie', 'gtk', 'gnome', 'kde', 'xfce'
-    plugin_settings: Dict[str, Any] = None
+    plugin_settings: Optional[Dict[str, Any]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize mutable default values."""
         if self.plugin_settings is None:
             self.plugin_settings = {}
