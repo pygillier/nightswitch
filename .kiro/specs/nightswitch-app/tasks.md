@@ -78,14 +78,14 @@
   - Write UI integration tests for window interactions
   - _Requirements: 1.3, 2.1, 2.2, 3.1_
 
-- [ ] 12. Create main application entry point
+- [x] 12. Create main application entry point
   - Implement TrayApplication class extending Gtk.Application
   - Add application lifecycle management and initialization
   - Integrate all components (tray, window, mode controller, plugins)
   - Handle application startup, shutdown, and background operation
   - _Requirements: 5.4, 6.4_
 
-- [ ] 13. Implement error handling and user notifications
+- [x] 13. Implement error handling and user notifications
   - Create ErrorHandler class for centralized error management
   - Add user notification system for errors and status updates
   - Implement fallback mechanisms for plugin and service failures
