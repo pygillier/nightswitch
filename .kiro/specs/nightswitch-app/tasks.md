@@ -56,21 +56,21 @@
   - Write unit tests for location detection and API integration
   - _Requirements: 3.2, 3.3, 3.7_
 
-- [-] 9. Create location mode handler
+- [x] 9. Create location mode handler
   - Implement LocationModeHandler integrating location and sunrise/sunset services
   - Add automatic sunrise/sunset theme switching functionality using sunrisesunset.io API
   - Implement error handling for API failures and network issues
   - Write unit tests for location-based theme switching
   - _Requirements: 3.4, 3.5_
 
-- [ ] 10. Build GTK 4 system tray integration
+- [x] 10. Build GTK 4 system tray integration
   - Create SystemTrayIcon class using appropriate GTK 4/AppIndicator approach
   - Implement tray icon display and context menu functionality
   - Add tray icon click handling to show/hide main window
   - Write integration tests for system tray behavior
   - _Requirements: 1.1, 1.2_
 
-- [ ] 11. Implement main application window UI
+- [x] 11. Implement main application window UI
   - Create MainWindow class with GTK 4 interface layout
   - Build manual mode button group with Dark/Light options
   - Add schedule mode toggle group with time input fields
