@@ -360,7 +360,7 @@ class TrayApplication(Gtk.Application):
             about_dialog.set_comments(
                 "A theme switching utility for Linux desktop environments"
             )
-            about_dialog.set_website("https://github.com/nightswitch/nightswitch")
+            about_dialog.set_website("https://github.com/pygillier/nightswitch")
             about_dialog.set_website_label("Nightswitch on GitHub")
             about_dialog.set_authors(["Nightswitch Contributors"])
             about_dialog.set_license_type(Gtk.License.GPL_3_0)

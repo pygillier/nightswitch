@@ -29,8 +29,8 @@
       <caption>System tray menu showing theme switching options</caption>
     </screenshot>
   </screenshots>
-  <url type="homepage">https://github.com/nightswitch/nightswitch</url>
-  <url type="bugtracker">https://github.com/nightswitch/nightswitch/issues</url>
+  <url type="homepage">https://github.com/pygillier/nightswitch</url>
+  <url type="bugtracker">https://github.com/pygillier/nightswitch/issues</url>
   <developer_name>Nightswitch Team</developer_name>
   <update_contact>team@nightswitch.org</update_contact>
   <content_rating type="oars-1.1" />

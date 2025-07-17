@@ -46,9 +46,9 @@ dev = [
 nightswitch = "nightswitch.main:main"
 
 [project.urls]
-Homepage = "https://github.com/nightswitch/nightswitch"
-Repository = "https://github.com/nightswitch/nightswitch"
-Issues = "https://github.com/nightswitch/nightswitch/issues"
+Homepage = "https://github.com/pygillier/nightswitch"
+Repository = "https://github.com/pygillier/nightswitch"
+Issues = "https://github.com/pygillier/nightswitch/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/nightswitch"]

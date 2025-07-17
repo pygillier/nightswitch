@@ -76,7 +76,7 @@ For developers or users who prefer traditional installation:
 
 ```bash
 # Clone the repository
-git clone https://github.com/nightswitch/nightswitch.git
+git clone https://github.com/pygillier/nightswitch.git
 cd nightswitch
 
 # Install with uv (recommended)
@@ -121,7 +121,7 @@ The main configuration file is stored as `config.json` in the configuration dire
 
 ```bash
 # Clone the repository
-git clone https://github.com/nightswitch/nightswitch.git
+git clone https://github.com/pygillier/nightswitch.git
 cd nightswitch
 
 # Install development dependencies
@@ -229,8 +229,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/nightswitch/nightswitch/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/nightswitch/nightswitch/discussions)
+- **Issues**: [GitHub Issues](https://github.com/pygillier/nightswitch/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/pygillier/nightswitch/discussions)
 - **Email**: team@nightswitch.org
 
 ---
