@@ -9,6 +9,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gio
 
+from nightswitch.core.error_handler import ErrorContext, ErrorCategory, ErrorSeverity
+from nightswitch.core.notification import NotificationType
 from nightswitch.main import TrayApplication
 
 
@@ -127,6 +129,10 @@ class TestTrayApplication(unittest.TestCase):
         app._plugin_manager = mock_plugin_manager
         app._mode_controller = mock_mode_controller
         
+        # Mock error handler and notification manager
+        app._error_handler = MagicMock()
+        app._notification_manager = MagicMock()
+        
         # Mock quit method
         with patch.object(app, 'quit') as mock_quit:
             # Call quit_application
@@ -137,6 +143,8 @@ class TestTrayApplication(unittest.TestCase):
             mock_cleanup_tray.assert_called_once()
             mock_mode_controller.cleanup.assert_called_once()
             mock_plugin_manager.cleanup_all.assert_called_once()
+            app._error_handler.clear_error_history.assert_called_once()
+            app._notification_manager.clear_notification_history.assert_called_once()
             mock_quit.assert_called_once()
     
     @patch("nightswitch.main.get_config")
@@ -172,6 +180,77 @@ class TestTrayApplication(unittest.TestCase):
         # Test hide_main_window
         app.hide_main_window()
         mock_window.hide.assert_called_once()
+
+    @patch("nightswitch.main.get_error_handler")
+    @patch("nightswitch.main.get_notification_manager")
+    def test_error_handling_fallbacks(self, mock_get_notification_manager, mock_get_error_handler):
+        """Test error handling fallback mechanisms."""
+        # Create application
+        app = TrayApplication()
+        
+        # Set up mocks
+        mock_error_handler = MagicMock()
+        mock_get_error_handler.return_value = mock_error_handler
+        
+        mock_notification_manager = MagicMock()
+        mock_get_notification_manager.return_value = mock_notification_manager
+        
+        mock_plugin_manager = MagicMock()
+        mock_mode_controller = MagicMock()
+        
+        # Set up application with mocks
+        app._error_handler = mock_error_handler
+        app._notification_manager = mock_notification_manager
+        app._plugin_manager = mock_plugin_manager
+        app._mode_controller = mock_mode_controller
+        
+        # Test plugin fallback handler
+        error_context = ErrorContext(
+            message="No compatible plugins found for your desktop environment.",
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.PLUGIN,
+        )
+        
+        # Set up plugin manager for fallback test
+        mock_plugin_manager.get_registered_plugins.return_value = {"TestPlugin": MagicMock()}
+        mock_plugin_manager.get_active_plugin.return_value = None
+        mock_plugin_manager.load_plugin.return_value = True
+        
+        # Call the fallback handler directly
+        result = app._plugin_error_fallback(error_context)
+        
+        # Verify plugin manager was used to find alternative plugins
+        mock_plugin_manager.get_registered_plugins.assert_called_once()
+        
+        # Test service fallback handler
+        location_error_context = ErrorContext(
+            message="Location detection failed",
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.SERVICE,
+            source="LocationService",
+        )
+        
+        # Call the service fallback handler
+        result = app._service_error_fallback(location_error_context)
+        
+        # Verify notification was shown
+        mock_notification_manager.notify.assert_called()
+        
+        # Test network fallback handler
+        network_error_context = ErrorContext(
+            message="Network connection failed",
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.NETWORK,
+        )
+        
+        # Set up mode controller for network fallback test
+        mock_mode_controller.get_current_mode = MagicMock(return_value=MagicMock(value="location"))
+        
+        # Call the network fallback handler
+        result = app._network_error_fallback(network_error_context)
+        
+        # Verify notification was shown again
+        self.assertEqual(mock_notification_manager.notify.call_count, 2)
 
 
 if __name__ == "__main__":

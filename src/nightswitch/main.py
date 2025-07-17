@@ -16,8 +16,26 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gio, GLib, Gtk
 
 from .core.config import ConfigManager, get_config
+from .core.error_handler import (
+    ErrorCategory,
+    ErrorContext,
+    ErrorHandler,
+    ErrorSeverity,
+    get_error_handler,
+)
 from .core.mode_controller import ModeController, get_mode_controller
-from .plugins.manager import PluginManager, get_plugin_manager
+from .core.notification import (
+    NotificationManager,
+    NotificationType,
+    NotificationPriority,
+    get_notification_manager,
+)
+from .plugins.manager import (
+    PluginCompatibilityError,
+    PluginError,
+    PluginManager,
+    get_plugin_manager,
+)
 from .ui.main_window import MainWindow
 from .ui.system_tray import SystemTrayIcon, cleanup_system_tray, create_system_tray
 
@@ -121,6 +139,19 @@ class TrayApplication(Gtk.Application):
     def _init_core_components(self) -> None:
         """Initialize core application components."""
         try:
+            # Initialize error handler and notification manager
+            self._error_handler = get_error_handler()
+            self._notification_manager = get_notification_manager()
+            self._notification_manager.set_application(self)
+            
+            # Set up error handler to use notification manager
+            self._error_handler.register_notification_callback(
+                self._notification_manager.notify_error
+            )
+            
+            # Register fallback handlers for different error categories
+            self._register_fallback_handlers()
+
             # Initialize configuration manager
             self._config_manager = get_config()
 
@@ -133,13 +164,22 @@ class TrayApplication(Gtk.Application):
 
             # Discover and load plugins
             self._plugin_manager.discover_plugins()
-            active_plugin = self._plugin_manager.auto_select_plugin()
-
-            if not active_plugin:
-                self.logger.error("No compatible plugins found")
-                self._show_error_dialog(
-                    "No compatible theme plugins found for your desktop environment.",
-                    "Nightswitch requires a compatible plugin to function properly.",
+            
+            try:
+                active_plugin = self._plugin_manager.auto_select_plugin()
+                
+                if not active_plugin:
+                    self._error_handler.handle_plugin_error(
+                        message="No compatible theme plugins found for your desktop environment.",
+                        severity=ErrorSeverity.ERROR,
+                        suggestion="Nightswitch requires a compatible plugin to function properly.",
+                    )
+            except PluginError as e:
+                self._error_handler.handle_plugin_error(
+                    message="Failed to initialize plugin",
+                    exception=e,
+                    severity=ErrorSeverity.ERROR,
+                    suggestion="Try restarting the application or check system compatibility.",
                 )
 
             # Initialize mode controller
@@ -148,7 +188,12 @@ class TrayApplication(Gtk.Application):
             self.logger.info("Core components initialized")
 
         except Exception as e:
-            self.logger.error(f"Failed to initialize core components: {e}")
+            self._error_handler.handle_error(
+                message="Failed to initialize core components",
+                exception=e,
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.SYSTEM,
+            )
             raise
 
     def _create_ui_components(self) -> None:
@@ -156,6 +201,15 @@ class TrayApplication(Gtk.Application):
         try:
             # Create main window
             self._main_window = MainWindow(self, self._mode_controller)
+            
+            # Set dialog parent for notification manager
+            self._notification_manager.set_dialog_parent(self._main_window)
+            
+            # Set up in-app notification callback if main window supports it
+            if hasattr(self._main_window, "show_notification"):
+                self._notification_manager.set_in_app_notification_callback(
+                    self._main_window.show_notification
+                )
 
             # Create system tray icon
             self._system_tray = create_system_tray(
@@ -171,7 +225,15 @@ class TrayApplication(Gtk.Application):
             self.logger.info("UI components created")
 
         except Exception as e:
-            self.logger.error(f"Failed to create UI components: {e}")
+            if hasattr(self, "_error_handler"):
+                self._error_handler.handle_error(
+                    message="Failed to create UI components",
+                    exception=e,
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.UI,
+                )
+            else:
+                self.logger.error(f"Failed to create UI components: {e}")
             raise
 
     def _setup_actions(self) -> None:
@@ -309,6 +371,177 @@ class TrayApplication(Gtk.Application):
         except Exception as e:
             self.logger.error(f"Failed to show about dialog: {e}")
 
+    def _register_fallback_handlers(self) -> None:
+        """Register fallback handlers for different error categories."""
+        try:
+            # Register plugin fallback handler
+            self._error_handler.register_fallback_handler(
+                ErrorCategory.PLUGIN, self._plugin_error_fallback
+            )
+            
+            # Register service fallback handler
+            self._error_handler.register_fallback_handler(
+                ErrorCategory.SERVICE, self._service_error_fallback
+            )
+            
+            # Register network fallback handler
+            self._error_handler.register_fallback_handler(
+                ErrorCategory.NETWORK, self._network_error_fallback
+            )
+            
+            # Register config fallback handler
+            self._error_handler.register_fallback_handler(
+                ErrorCategory.CONFIG, self._config_error_fallback
+            )
+            
+            self.logger.debug("Fallback handlers registered")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to register fallback handlers: {e}")
+    
+    def _plugin_error_fallback(self, error_context: ErrorContext) -> bool:
+        """
+        Fallback handler for plugin errors.
+        
+        Args:
+            error_context: Error context
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            # If no active plugin, try to find another compatible plugin
+            if (
+                self._plugin_manager 
+                and not self._plugin_manager.get_active_plugin()
+                and "No compatible" in error_context.message
+            ):
+                # Get list of all registered plugins
+                plugins = self._plugin_manager.get_registered_plugins()
+                
+                if not plugins:
+                    return False  # No plugins available
+                
+                # Try to load any plugin as fallback
+                for plugin_name in plugins:
+                    try:
+                        if self._plugin_manager.load_plugin(plugin_name):
+                            self._plugin_manager.set_active_plugin(plugin_name)
+                            self.logger.info(f"Fallback to plugin: {plugin_name}")
+                            
+                            # Notify about fallback
+                            self._notification_manager.notify(
+                                message=f"Using fallback plugin: {plugin_name}",
+                                title="Plugin Fallback",
+                                notification_type=NotificationType.WARNING,
+                            )
+                            return True
+                    except Exception:
+                        continue
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error in plugin fallback handler: {e}")
+            return False
+    
+    def _service_error_fallback(self, error_context: ErrorContext) -> bool:
+        """
+        Fallback handler for service errors.
+        
+        Args:
+            error_context: Error context
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            # Handle location service errors
+            if error_context.source and "LocationService" in error_context.source:
+                # If location detection fails, suggest manual location input
+                self._notification_manager.notify(
+                    message="Location detection failed. You can manually set your location in the settings.",
+                    title="Location Service",
+                    notification_type=NotificationType.INFO,
+                )
+                return True
+                
+            # Handle sunrise/sunset service errors
+            elif error_context.source and "SunriseSunset" in error_context.source:
+                # If sunrise/sunset API fails, suggest schedule mode
+                self._notification_manager.notify(
+                    message="Sunrise/sunset data unavailable. Consider using schedule mode instead.",
+                    title="Sunrise/Sunset Service",
+                    notification_type=NotificationType.INFO,
+                )
+                return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error in service fallback handler: {e}")
+            return False
+    
+    def _network_error_fallback(self, error_context: ErrorContext) -> bool:
+        """
+        Fallback handler for network errors.
+        
+        Args:
+            error_context: Error context
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            # For network errors, suggest offline mode options
+            if self._mode_controller:
+                # If in location mode, suggest switching to manual or schedule mode
+                if self._mode_controller.get_current_mode() and self._mode_controller.get_current_mode().value == "location":
+                    self._notification_manager.notify(
+                        message="Network connection unavailable. Location mode requires internet access. Consider using manual or schedule mode instead.",
+                        title="Network Error",
+                        notification_type=NotificationType.WARNING,
+                    )
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error in network fallback handler: {e}")
+            return False
+    
+    def _config_error_fallback(self, error_context: ErrorContext) -> bool:
+        """
+        Fallback handler for configuration errors.
+        
+        Args:
+            error_context: Error context
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            # For config errors, try to reset to defaults
+            if self._config_manager:
+                try:
+                    # Reset to default configuration
+                    self._config_manager.reset_to_defaults()
+                    
+                    self._notification_manager.notify(
+                        message="Configuration has been reset to defaults due to errors.",
+                        title="Configuration Reset",
+                        notification_type=NotificationType.WARNING,
+                    )
+                    return True
+                except Exception:
+                    pass
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error in config fallback handler: {e}")
+            return False
+    
     def _show_error_dialog(self, message: str, details: Optional[str] = None) -> None:
         """
         Show an error dialog.
@@ -371,12 +604,29 @@ class TrayApplication(Gtk.Application):
             # Clean up plugin manager
             if self._plugin_manager:
                 self._plugin_manager.cleanup_all()
+                
+            # Clear error handler and notification manager history
+            if hasattr(self, "_error_handler"):
+                self._error_handler.clear_error_history()
+                
+            if hasattr(self, "_notification_manager"):
+                self._notification_manager.clear_notification_history()
 
             # Quit the application
             self.quit()
 
         except Exception as e:
-            self.logger.error(f"Error during application shutdown: {e}")
+            if hasattr(self, "_error_handler"):
+                self._error_handler.handle_error(
+                    message="Error during application shutdown",
+                    exception=e,
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.SYSTEM,
+                    notify_user=False,  # Don't notify during shutdown
+                )
+            else:
+                self.logger.error(f"Error during application shutdown: {e}")
+                
             # Force quit even if cleanup fails
             self.quit()
 
