@@ -1,0 +1,13 @@
+[Unit]
+Description=Nightswitch Theme Switching Utility
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env nightswitch --minimized
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target

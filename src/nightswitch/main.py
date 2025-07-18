@@ -16,6 +16,7 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gio, GLib, Gtk
 
 from .core.config import ConfigManager, get_config
+from .core.logging_manager import LogLevel, LoggingManager, get_logging_manager
 from .core.error_handler import (
     ErrorCategory,
     ErrorContext,
@@ -74,22 +75,38 @@ class TrayApplication(Gtk.Application):
 
     def _setup_logging(self) -> None:
         """Set up application logging."""
-        # Configure root logger
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.INFO)
-
-        # Create console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-
-        # Create formatter
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        # Get configuration manager
+        config_manager = get_config()
+        app_config = config_manager.get_app_config()
+        
+        # Get logging manager
+        logging_manager = get_logging_manager()
+        
+        # Convert string log level to LogLevel enum
+        log_level_str = app_config.log_level.upper()
+        log_level = LogLevel.INFO  # Default
+        
+        try:
+            log_level = LogLevel[log_level_str]
+        except KeyError:
+            # Invalid log level in config, use INFO as fallback
+            pass
+            
+        # Initialize logging system
+        logging_manager.initialize(
+            log_level=log_level,
+            debug_mode=app_config.debug_mode
         )
-        console_handler.setFormatter(formatter)
-
-        # Add handler to root logger
-        root_logger.addHandler(console_handler)
+        
+        # Enable debug mode for specific components if configured
+        for component in app_config.debug_components:
+            logging_manager.enable_debug_mode(component)
+            
+        # Log initialization
+        logger = logging.getLogger("nightswitch.core.logging")
+        logger.info(f"Logging system initialized with level: {log_level.name}")
+        if app_config.debug_mode:
+            logger.info("Debug mode enabled globally")
 
     def do_startup(self) -> None:
         """Handle application startup."""
@@ -631,6 +648,58 @@ class TrayApplication(Gtk.Application):
             self.quit()
 
 
+def parse_args(args: List[str]) -> dict:
+    """
+    Parse command line arguments.
+    
+    Args:
+        args: Command line arguments
+        
+    Returns:
+        Dictionary of parsed arguments
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Nightswitch - Theme switching utility")
+    
+    # Logging options
+    log_group = parser.add_argument_group("Logging Options")
+    log_group.add_argument(
+        "--log-level", 
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the log level"
+    )
+    log_group.add_argument(
+        "--debug", 
+        action="store_true",
+        help="Enable debug mode globally"
+    )
+    log_group.add_argument(
+        "--debug-component", 
+        action="append",
+        help="Enable debug mode for specific component (can be used multiple times)"
+    )
+    log_group.add_argument(
+        "--log-file", 
+        help="Path to log file (default: ~/.local/state/nightswitch/logs/nightswitch.log)"
+    )
+    
+    # Application options
+    app_group = parser.add_argument_group("Application Options")
+    app_group.add_argument(
+        "--minimized", 
+        action="store_true",
+        help="Start application minimized to system tray"
+    )
+    app_group.add_argument(
+        "--reset-config", 
+        action="store_true",
+        help="Reset configuration to defaults"
+    )
+    
+    return vars(parser.parse_args(args[1:]))  # Skip the first argument (script name)
+
+
 def main() -> int:
     """
     Main entry point for the Nightswitch application.
@@ -639,6 +708,41 @@ def main() -> int:
         Exit code (0 for success, non-zero for error)
     """
     try:
+        # Parse command line arguments
+        args = parse_args(sys.argv)
+        
+        # Handle configuration reset if requested
+        if args.get("reset_config"):
+            config_manager = get_config()
+            config_manager.reset_to_defaults()
+            print("Configuration reset to defaults")
+            return 0
+            
+        # Apply command line arguments to configuration
+        config_manager = get_config()
+        app_config = config_manager.get_app_config()
+        
+        # Override log level if specified
+        if args.get("log_level"):
+            app_config.log_level = args["log_level"]
+            
+        # Enable debug mode if specified
+        if args.get("debug"):
+            app_config.debug_mode = True
+            
+        # Add debug components if specified
+        if args.get("debug_component"):
+            for component in args["debug_component"]:
+                if component not in app_config.debug_components:
+                    app_config.debug_components.append(component)
+                    
+        # Override start_minimized if specified
+        if args.get("minimized"):
+            app_config.start_minimized = True
+            
+        # Update configuration
+        config_manager.set_app_config(app_config)
+        
         # Create and run application
         app = TrayApplication()
         exit_status = app.run(sys.argv)

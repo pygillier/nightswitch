@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.nightswitch.Nightswitch</id>
+  <id>me.pygillier.Nightswitch</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Nightswitch</name>
@@ -20,7 +20,7 @@
       <li>Minimal system tray integration</li>
     </ul>
   </description>
-  <launchable type="desktop-id">org.nightswitch.Nightswitch.desktop</launchable>
+  <launchable type="desktop-id">me.pygillier.Nightswitch.desktop</launchable>
   <provides>
     <binary>nightswitch</binary>
   </provides>
@@ -31,8 +31,8 @@
   </screenshots>
   <url type="homepage">https://github.com/pygillier/nightswitch</url>
   <url type="bugtracker">https://github.com/pygillier/nightswitch/issues</url>
-  <developer_name>Nightswitch Team</developer_name>
-  <update_contact>team@nightswitch.org</update_contact>
+  <developer_name>Pierre-Yves Gillier</developer_name>
+  <update_contact>github@pygillier.me</update_contact>
   <content_rating type="oars-1.1" />
   <releases>
     <release version="0.1.0" date="2025-01-16">

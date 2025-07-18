@@ -79,12 +79,38 @@ For developers or users who prefer traditional installation:
 git clone https://github.com/pygillier/nightswitch.git
 cd nightswitch
 
-# Install with uv (recommended)
-uv pip install -e .
+# Install using the installation script (recommended)
+./install.sh --user  # For user installation
+./install.sh --system  # For system-wide installation (requires sudo)
 
-# Or with pip
-pip install -e .
+# Or install manually with uv
+uv pip install -e .
 ```
+
+### Installation Script Options
+
+The `install.sh` script provides several options:
+
+```bash
+# Install for current user (default)
+./install.sh --user
+
+# Install system-wide (requires sudo)
+./install.sh --system
+
+# Uninstall Nightswitch
+./install.sh --uninstall
+
+# Show help
+./install.sh --help
+```
+
+The installation script will:
+- Install required dependencies
+- Install Nightswitch package
+- Create desktop entry
+- Set up autostart via desktop file and systemd service
+- Install application icon
 
 ## 🚀 Usage
 
@@ -94,9 +120,26 @@ pip install -e .
 # Launch Nightswitch
 nightswitch
 
+# Launch minimized to system tray
+nightswitch --minimized
+
 # The application will appear in your system tray
 # Look for the theme switcher icon in your system tray area
 ```
+
+### Autostart Configuration
+
+Nightswitch can be configured to start automatically when you log in:
+
+```bash
+# Enable autostart (creates desktop and systemd service entries)
+./enable-autostart.sh
+
+# Disable autostart
+./enable-autostart.sh --disable
+```
+
+The installation script automatically sets up autostart. This separate script is provided for users who want to enable or disable autostart after installation.
 
 ### Basic Operations
 

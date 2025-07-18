@@ -8,9 +8,9 @@ the XDG Base Directory Specification.
 import copy
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
@@ -41,6 +41,14 @@ class AppConfig:
     start_minimized: bool = True
     show_notifications: bool = True
     autostart: bool = False
+
+    # Logging settings
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    debug_mode: bool = False
+    debug_components: List[str] = field(default_factory=list)  # List of components with debug enabled
+    log_to_file: bool = True
+    log_max_size_mb: int = 10
+    log_backup_count: int = 3
 
     # Plugin settings
     active_plugin: str = "auto"  # 'auto', 'budgie', 'gtk', 'gnome', 'kde', 'xfce'
@@ -102,6 +110,12 @@ class AppConfig:
         Returns:
             AppConfig instance
         """
+        # Get logging settings
+        logging_data = data.get("logging", {})
+        debug_components = logging_data.get("debug_components", [])
+        if debug_components is None:
+            debug_components = []
+            
         return cls(
             current_mode=data.get("mode", "manual"),
             manual_theme=data.get("current_theme", "light"),
@@ -115,6 +129,14 @@ class AppConfig:
             start_minimized=data.get("ui", {}).get("minimize_to_tray", True),
             show_notifications=data.get("ui", {}).get("show_notifications", True),
             autostart=data.get("ui", {}).get("autostart", False),
+            # Logging settings
+            log_level=logging_data.get("log_level", "INFO"),
+            debug_mode=logging_data.get("debug_mode", False),
+            debug_components=debug_components,
+            log_to_file=logging_data.get("log_to_file", True),
+            log_max_size_mb=logging_data.get("log_max_size_mb", 10),
+            log_backup_count=logging_data.get("log_backup_count", 3),
+            # Plugin settings
             active_plugin=data.get("plugins", {}).get("active_plugin", "auto"),
             plugin_settings=data.get("plugins", {}).get("plugin_settings", {}),
         )
@@ -144,6 +166,14 @@ class AppConfig:
                 "minimize_to_tray": self.start_minimized,
                 "show_notifications": self.show_notifications,
                 "autostart": self.autostart,
+            },
+            "logging": {
+                "log_level": self.log_level,
+                "debug_mode": self.debug_mode,
+                "debug_components": self.debug_components,
+                "log_to_file": self.log_to_file,
+                "log_max_size_mb": self.log_max_size_mb,
+                "log_backup_count": self.log_backup_count,
             },
             "plugins": {
                 "active_plugin": self.active_plugin,
@@ -241,6 +271,14 @@ class ConfigManager:
             "minimize_to_tray": True,
             "autostart": False,
         },
+        "logging": {
+            "log_level": "INFO",
+            "debug_mode": False,
+            "debug_components": [],
+            "log_to_file": True,
+            "log_max_size_mb": 10,
+            "log_backup_count": 3,
+        },
         "plugins": {
             "active_plugin": "auto",  # auto, budgie, gtk, gnome, kde, xfce
             "plugin_settings": {},
@@ -304,6 +342,14 @@ class ConfigManager:
                 "show_notifications": True,
                 "minimize_to_tray": True,
                 "autostart": False,
+            },
+            "logging": {
+                "log_level": "INFO",
+                "debug_mode": False,
+                "debug_components": [],
+                "log_to_file": True,
+                "log_max_size_mb": 10,
+                "log_backup_count": 3,
             },
             "plugins": {
                 "active_plugin": "auto",  # auto, budgie, gtk, gnome, kde, xfce
