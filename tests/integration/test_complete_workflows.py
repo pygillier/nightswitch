@@ -248,7 +248,6 @@ class TestSystemTrayModeSwitch:
         self.location_mode_handler.cleanup()
         self.plugin_manager.cleanup_all()
     
-    @patch('src.nightswitch.ui.system_tray.HAS_APPINDICATOR', True)
     @patch('src.nightswitch.ui.system_tray.AppIndicator3')
     def test_system_tray_mode_switching(self, mock_appindicator):
         """Test mode switching through system tray."""
