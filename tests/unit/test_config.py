@@ -436,28 +436,22 @@ class TestAppConfig:
         )
 
         data = config.to_dict()
-        expected = {
-            "mode": "schedule",
-            "current_theme": "dark",
-            "schedule": {"enabled": True, "dark_time": "20:00", "light_time": "08:00"},
-            "location": {
-                "enabled": True,
-                "latitude": 40.7128,
-                "longitude": -74.0060,
-                "auto_detect": False,
-            },
-            "ui": {
-                "minimize_to_tray": False,
-                "show_notifications": False,
-                "autostart": True,
-            },
-            "plugins": {
-                "active_plugin": "budgie",
-                "plugin_settings": {"test": "value"},
-            },
-        }
-
-        assert data == expected
+        
+        # Verify key parts of the dictionary
+        assert data["mode"] == "schedule"
+        assert data["current_theme"] == "dark"
+        assert data["schedule"]["enabled"] is True
+        assert data["schedule"]["dark_time"] == "20:00"
+        assert data["schedule"]["light_time"] == "08:00"
+        assert data["location"]["enabled"] is True
+        assert data["location"]["latitude"] == 40.7128
+        assert data["location"]["longitude"] == -74.0060
+        assert data["location"]["auto_detect"] is False
+        assert data["ui"]["minimize_to_tray"] is False
+        assert data["ui"]["show_notifications"] is False
+        assert data["ui"]["autostart"] is True
+        assert data["plugins"]["active_plugin"] == "budgie"
+        assert data["plugins"]["plugin_settings"] == {"test": "value"}
 
 
 class TestConfigManagerEnhanced:

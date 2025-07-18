@@ -2,15 +2,18 @@
 Configuration management for Nightswitch application.
 
 This module provides FreeDesktop-compliant configuration storage following
-the XDG Base Directory Specification.
+the XDG Base Directory Specification with automatic settings persistence,
+state restoration, and version-based migration support.
 """
 
 import copy
 import json
 import os
+import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 
 
 @dataclass
@@ -255,8 +258,12 @@ class ConfigManager:
 
     CONFIG_FILE = "config.json"
 
+    # Current configuration version
+    CONFIG_VERSION = "1.0.0"
+    
     # Default configuration values
     DEFAULT_CONFIG = {
+        "version": CONFIG_VERSION,  # Configuration version for migrations
         "mode": "manual",  # manual, schedule, location
         "current_theme": "light",  # light, dark
         "schedule": {"light_time": "07:00", "dark_time": "19:00", "enabled": False},
@@ -283,6 +290,12 @@ class ConfigManager:
             "active_plugin": "auto",  # auto, budgie, gtk, gnome, kde, xfce
             "plugin_settings": {},
         },
+        "state": {
+            "last_run": None,  # ISO format datetime string
+            "last_active_mode": "manual",
+            "last_theme": "light",
+            "startup_count": 0,
+        },
     }
 
     def __init__(self) -> None:
@@ -293,8 +306,17 @@ class ConfigManager:
         self._cache_dir = XDGPaths.cache_home()
         self._state_dir = XDGPaths.state_home()
         self._config_path = self._config_dir / self.CONFIG_FILE
+        self._logger = logging.getLogger("nightswitch.core.config")
+        
+        # Auto-save settings flag
+        self._auto_save_enabled = True
+        
+        # Change listeners for automatic settings persistence
+        self._change_listeners: List[Callable[[str, Any], None]] = []
+        
         self._ensure_directories()
         self._load_config()
+        self._migrate_config_if_needed()
 
     def _ensure_directories(self) -> None:
         """Ensure all required XDG directories exist."""
@@ -329,6 +351,7 @@ class ConfigManager:
     def _get_default_config(self) -> Dict[str, Any]:
         """Get a fresh copy of the default configuration."""
         return {
+            "version": self.CONFIG_VERSION,  # Configuration version for migrations
             "mode": "manual",  # manual, schedule, location
             "current_theme": "light",  # light, dark
             "schedule": {"light_time": "07:00", "dark_time": "19:00", "enabled": False},
@@ -354,6 +377,12 @@ class ConfigManager:
             "plugins": {
                 "active_plugin": "auto",  # auto, budgie, gtk, gnome, kde, xfce
                 "plugin_settings": {},
+            },
+            "state": {
+                "last_run": None,  # ISO format datetime string
+                "last_active_mode": "manual",
+                "last_theme": "light",
+                "startup_count": 0,
             },
         }
 
@@ -389,8 +418,121 @@ class ConfigManager:
         try:
             with open(self._config_path, "w", encoding="utf-8") as f:
                 json.dump(self._config, f, indent=2, ensure_ascii=False)
+            self._logger.debug("Configuration saved to file")
         except OSError as e:
-            print(f"Error: Failed to save config file: {e}")
+            self._logger.error(f"Failed to save config file: {e}")
+            
+    def _migrate_config_if_needed(self) -> None:
+        """
+        Check if configuration needs migration and perform it if necessary.
+        
+        This method compares the version in the loaded configuration with the
+        current version and applies necessary migrations to update the config.
+        """
+        current_version = self._config.get("version", "0.0.0")
+        
+        if current_version == self.CONFIG_VERSION:
+            self._logger.debug(f"Configuration is already at current version {current_version}")
+            return
+            
+        self._logger.info(f"Migrating configuration from version {current_version} to {self.CONFIG_VERSION}")
+        
+        # Create a backup before migration
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = self._config_dir / f"config_backup_{timestamp}.json"
+        
+        try:
+            # Ensure directory exists
+            backup_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write backup file directly
+            with open(backup_path, "w", encoding="utf-8") as f:
+                json.dump(self._config, f, indent=2, ensure_ascii=False)
+                
+            self._logger.info(f"Created pre-migration backup at {backup_path}")
+        except Exception as e:
+            self._logger.warning(f"Failed to create pre-migration backup: {e}")
+        
+        # Apply migrations based on version
+        try:
+            if self._compare_versions(current_version, "1.0.0") < 0:
+                self._migrate_to_1_0_0()
+                
+            # Add future migrations here
+            # if self._compare_versions(current_version, "1.1.0") < 0:
+            #     self._migrate_to_1_1_0()
+            
+            # Update version after successful migration
+            self._config["version"] = self.CONFIG_VERSION
+            self._save_config()
+            self._logger.info(f"Configuration successfully migrated to version {self.CONFIG_VERSION}")
+            
+        except Exception as e:
+            self._logger.error(f"Error during configuration migration: {e}")
+            # Ensure we don't lose the original configuration
+            try:
+                with open(backup_path, "r", encoding="utf-8") as f:
+                    self._config = json.load(f)
+            except Exception:
+                pass
+            
+    def _compare_versions(self, version1: str, version2: str) -> int:
+        """
+        Compare two version strings.
+        
+        Args:
+            version1: First version string (e.g., "1.0.0")
+            version2: Second version string (e.g., "1.1.0")
+            
+        Returns:
+            -1 if version1 < version2, 0 if version1 == version2, 1 if version1 > version2
+        """
+        v1_parts = [int(x) for x in version1.split(".")]
+        v2_parts = [int(x) for x in version2.split(".")]
+        
+        # Pad with zeros if needed
+        while len(v1_parts) < 3:
+            v1_parts.append(0)
+        while len(v2_parts) < 3:
+            v2_parts.append(0)
+            
+        for i in range(3):
+            if v1_parts[i] < v2_parts[i]:
+                return -1
+            if v1_parts[i] > v2_parts[i]:
+                return 1
+                
+        return 0
+        
+    def _migrate_to_1_0_0(self) -> None:
+        """
+        Migrate configuration to version 1.0.0.
+        
+        This migration adds the state tracking section and ensures
+        all required fields are present in the configuration.
+        """
+        self._logger.debug("Applying migration to version 1.0.0")
+        
+        # Save original values that we want to preserve
+        original_mode = self._config.get("mode", "manual")
+        original_theme = self._config.get("current_theme", "light")
+        
+        # Add state section if it doesn't exist
+        if "state" not in self._config:
+            self._config["state"] = {
+                "last_run": None,
+                "last_active_mode": original_mode,
+                "last_theme": original_theme,
+                "startup_count": 0
+            }
+            
+        # Ensure all required fields exist by merging with defaults
+        defaults = self._get_default_config()
+        self._config = self._merge_config(defaults, self._config)
+        
+        # Make sure the original mode and theme are preserved
+        self._config["mode"] = original_mode
+        self._config["current_theme"] = original_theme
 
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -430,9 +572,26 @@ class ConfigManager:
                 config[k] = {}
             config = config[k]
 
+        # Check if value is actually changing
+        old_value = config.get(keys[-1])
+        if old_value == value:
+            return  # No change, skip save and notifications
+            
         # Set the value
         config[keys[-1]] = value
-        self._save_config()
+        
+        # Notify listeners
+        self._notify_change_listeners(key, value)
+        
+        # Save if auto-save is enabled
+        if self._auto_save_enabled:
+            self._save_config()
+            
+        # Update state tracking for specific keys
+        if key == "mode":
+            self.update_last_mode(value)
+        elif key == "current_theme":
+            self.update_last_theme(value)
 
     def get_all(self) -> Dict[str, Any]:
         """
@@ -446,26 +605,7 @@ class ConfigManager:
     def reset_to_defaults(self) -> None:
         """Reset configuration to default values."""
         # Create a fresh copy of the default configuration
-        default_config = {
-            "mode": "manual",  # manual, schedule, location
-            "current_theme": "light",  # light, dark
-            "schedule": {"light_time": "07:00", "dark_time": "19:00", "enabled": False},
-            "location": {
-                "enabled": False,
-                "latitude": None,
-                "longitude": None,
-                "auto_detect": True,
-            },
-            "ui": {
-                "show_notifications": True,
-                "minimize_to_tray": True,
-                "autostart": False,
-            },
-            "plugins": {
-                "active_plugin": "auto",  # auto, budgie, gtk, gnome, kde, xfce
-                "plugin_settings": {},
-            },
-        }
+        default_config = self._get_default_config()
         self._config = default_config
         self._save_config()
 
@@ -491,8 +631,33 @@ class ConfigManager:
         if not app_config.validate():
             raise ValueError("Invalid configuration values")
 
-        self._config = app_config.to_dict()
-        self._save_config()
+        # Check if mode or theme is changing
+        old_mode = self._config.get("mode")
+        old_theme = self._config.get("current_theme")
+        
+        # Convert to dictionary
+        new_config = app_config.to_dict()
+        
+        # Preserve state information
+        if "state" in self._config:
+            new_config["state"] = self._config["state"]
+            
+        # Preserve version information
+        new_config["version"] = self._config.get("version", self.CONFIG_VERSION)
+        
+        # Update configuration
+        self._config = new_config
+        
+        # Update state tracking if mode or theme changed
+        if old_mode != app_config.current_mode:
+            self.update_last_mode(app_config.current_mode)
+            
+        if old_theme != app_config.manual_theme:
+            self.update_last_theme(app_config.manual_theme)
+        
+        # Save configuration
+        if self._auto_save_enabled:
+            self._save_config()
 
     def validate_config(self) -> bool:
         """
@@ -582,6 +747,150 @@ class ConfigManager:
     def state_dir(self) -> Path:
         """Get the state directory path."""
         return self._state_dir
+        
+    def enable_auto_save(self) -> None:
+        """Enable automatic saving of configuration changes."""
+        self._auto_save_enabled = True
+        self._logger.debug("Auto-save enabled")
+        
+    def disable_auto_save(self) -> None:
+        """Disable automatic saving of configuration changes."""
+        self._auto_save_enabled = False
+        self._logger.debug("Auto-save disabled")
+        
+    def is_auto_save_enabled(self) -> bool:
+        """
+        Check if automatic saving is enabled.
+        
+        Returns:
+            True if auto-save is enabled, False otherwise
+        """
+        return self._auto_save_enabled
+        
+    def add_change_listener(self, listener: Callable[[str, Any], None]) -> None:
+        """
+        Add a listener for configuration changes.
+        
+        Args:
+            listener: Function to call when configuration changes (key, value)
+        """
+        if listener not in self._change_listeners:
+            self._change_listeners.append(listener)
+            
+    def remove_change_listener(self, listener: Callable[[str, Any], None]) -> None:
+        """
+        Remove a configuration change listener.
+        
+        Args:
+            listener: Listener function to remove
+        """
+        if listener in self._change_listeners:
+            self._change_listeners.remove(listener)
+            
+    def _notify_change_listeners(self, key: str, value: Any) -> None:
+        """
+        Notify all registered listeners about a configuration change.
+        
+        Args:
+            key: Configuration key that changed
+            value: New value
+        """
+        for listener in self._change_listeners:
+            try:
+                listener(key, value)
+            except Exception as e:
+                self._logger.error(f"Error in configuration change listener: {e}")
+                
+    def update_state(self, **kwargs) -> None:
+        """
+        Update application state information.
+        
+        Args:
+            **kwargs: State values to update (e.g., last_run, last_active_mode)
+        """
+        if "state" not in self._config:
+            self._config["state"] = {}
+            
+        for key, value in kwargs.items():
+            self._config["state"][key] = value
+            
+        if self._auto_save_enabled:
+            self._save_config()
+            
+    def get_state(self, key: str, default: Any = None) -> Any:
+        """
+        Get a state value.
+        
+        Args:
+            key: State key
+            default: Default value if key doesn't exist
+            
+        Returns:
+            State value or default
+        """
+        return self._config.get("state", {}).get(key, default)
+        
+    def update_last_run(self) -> None:
+        """Update the last run timestamp to current time."""
+        now = datetime.now().isoformat()
+        self.update_state(last_run=now)
+        
+        # Increment startup count
+        startup_count = self.get_state("startup_count", 0)
+        self.update_state(startup_count=startup_count + 1)
+        
+    def get_last_run(self) -> Optional[datetime]:
+        """
+        Get the last run timestamp.
+        
+        Returns:
+            Last run datetime or None if not available
+        """
+        last_run = self.get_state("last_run")
+        if last_run:
+            try:
+                return datetime.fromisoformat(last_run)
+            except (ValueError, TypeError):
+                return None
+        return None
+        
+    def update_last_mode(self, mode: str) -> None:
+        """
+        Update the last active mode.
+        
+        Args:
+            mode: Mode name ('manual', 'schedule', 'location')
+        """
+        self.update_state(last_active_mode=mode)
+        
+    def get_last_mode(self) -> str:
+        """
+        Get the last active mode.
+        
+        Returns:
+            Last active mode or 'manual' if not available
+        """
+        state_value = self.get_state("last_active_mode")
+        return "manual" if state_value is None else state_value
+        
+    def update_last_theme(self, theme: str) -> None:
+        """
+        Update the last applied theme.
+        
+        Args:
+            theme: Theme name ('dark', 'light')
+        """
+        self.update_state(last_theme=theme)
+        
+    def get_last_theme(self) -> str:
+        """
+        Get the last applied theme.
+        
+        Returns:
+            Last theme or 'light' if not available
+        """
+        state_value = self.get_state("last_theme")
+        return "light" if state_value is None else state_value
 
 
 # Global configuration instance

@@ -100,6 +100,10 @@ class ModeController:
                     f"Invalid theme in config: {config.manual_theme}, defaulting to light"
                 )
 
+            # Update state tracking
+            self._config_manager.update_last_mode(self._current_mode.value)
+            self._config_manager.update_last_theme(self._current_theme.value)
+
             self.logger.info(
                 f"Loaded state: mode={self._current_mode.value}, theme={self._current_theme.value}"
             )

@@ -171,6 +171,9 @@ class TrayApplication(Gtk.Application):
 
             # Initialize configuration manager
             self._config_manager = get_config()
+            
+            # Update last run timestamp and startup count
+            self._config_manager.update_last_run()
 
             # Load application settings
             app_config = self._config_manager.get_app_config()
@@ -201,6 +204,9 @@ class TrayApplication(Gtk.Application):
 
             # Initialize mode controller
             self._mode_controller = get_mode_controller()
+            
+            # Restore previous mode if needed
+            self._restore_application_state()
 
             self.logger.info("Core components initialized")
 
@@ -415,6 +421,60 @@ class TrayApplication(Gtk.Application):
             
         except Exception as e:
             self.logger.error(f"Failed to register fallback handlers: {e}")
+            
+    def _restore_application_state(self) -> None:
+        """
+        Restore application state from previous session.
+        
+        This method restores the application state based on the saved configuration,
+        including the active mode and theme settings.
+        """
+        try:
+            if not self._config_manager or not self._mode_controller:
+                self.logger.warning("Cannot restore state: components not initialized")
+                return
+                
+            # Get current configuration
+            app_config = self._config_manager.get_app_config()
+            
+            # Check if we need to restore schedule mode
+            if app_config.current_mode == "schedule" and app_config.schedule_enabled:
+                self.logger.info("Restoring schedule mode from previous session")
+                self._mode_controller.set_schedule_mode(
+                    app_config.dark_time, 
+                    app_config.light_time
+                )
+                
+            # Check if we need to restore location mode
+            elif app_config.current_mode == "location" and app_config.location_enabled:
+                self.logger.info("Restoring location mode from previous session")
+                if app_config.auto_location:
+                    # Auto-detect location
+                    self._mode_controller.set_location_mode()
+                elif app_config.latitude is not None and app_config.longitude is not None:
+                    # Use saved coordinates
+                    self._mode_controller.set_location_mode(
+                        app_config.latitude,
+                        app_config.longitude
+                    )
+                    
+            # Otherwise, ensure manual mode is set with the correct theme
+            else:
+                self.logger.info("Restoring manual mode from previous session")
+                if app_config.manual_theme == "dark":
+                    self._mode_controller.manual_switch_to_dark()
+                else:
+                    self._mode_controller.manual_switch_to_light()
+                    
+            self.logger.info("Application state restored successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to restore application state: {e}")
+            # Fall back to manual mode if restoration fails
+            try:
+                self._mode_controller.set_manual_mode()
+            except Exception:
+                pass
     
     def _plugin_error_fallback(self, error_context: ErrorContext) -> bool:
         """
@@ -607,9 +667,24 @@ class TrayApplication(Gtk.Application):
         self.logger.info("Application quitting")
 
         try:
-            # Save configuration
-            if self._config_manager:
-                self._config_manager._save_config()
+            # Save application state
+            if self._config_manager and self._mode_controller:
+                # Get current mode and theme
+                current_mode = self._mode_controller.get_current_mode()
+                current_theme = self._mode_controller.get_current_theme()
+                
+                if current_mode and current_theme:
+                    # Update state tracking
+                    self._config_manager.update_last_mode(current_mode.value)
+                    self._config_manager.update_last_theme(current_theme.value)
+                    
+                    # Save configuration
+                    self._config_manager._save_config()
+                    self.logger.info("Application state saved")
+                else:
+                    self.logger.warning("Could not save application state: mode or theme not set")
+            else:
+                self.logger.warning("Could not save application state: components not initialized")
 
             # Clean up system tray
             cleanup_system_tray()
