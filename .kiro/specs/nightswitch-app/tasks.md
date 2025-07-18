@@ -106,7 +106,7 @@
   - Configure application to start minimized and integrate with system startup
   - _Requirements: 5.5, 6.4_
 
-- [ ] 16. Write integration tests for complete workflows
+- [x] 16. Write integration tests for complete workflows
   - Create end-to-end tests for manual theme switching workflow
   - Write integration tests for schedule mode complete cycle
   - Add integration tests for location mode sunrise/sunset switching
