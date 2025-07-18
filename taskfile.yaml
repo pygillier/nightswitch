@@ -1,0 +1,101 @@
+version: '3'
+
+vars:
+  PYTHON_CMD: uv run python
+  PIP_CMD: uv pip
+  PYTEST_CMD: uv run pytest
+  BLACK_CMD: uv run black
+  ISORT_CMD: uv run isort
+  MYPY_CMD: uv run mypy
+  FLAKE8_CMD: uv run flake8
+  SRC_DIR: src/nightswitch
+  TEST_DIR: tests
+
+tasks:
+  default:
+    desc: Display available tasks
+    cmds:
+      - task --list
+
+  install:
+    desc: Install the package and development dependencies
+    cmds:
+      - "{{.PIP_CMD}} install -e \".[dev]\""
+
+  run:
+    desc: Run the application
+    cmds:
+      - "{{.PYTHON_CMD}} -m nightswitch.main"
+
+  test:
+    desc: Run all tests
+    cmds:
+      - "{{.PYTEST_CMD}}"
+
+  test:unit:
+    desc: Run unit tests
+    cmds:
+      - "{{.PYTEST_CMD}} {{.TEST_DIR}}/unit"
+
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - "{{.PYTEST_CMD}} {{.TEST_DIR}}/integration"
+
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - "{{.PYTEST_CMD}} --cov={{.SRC_DIR}} --cov-report=html --cov-report=term"
+
+  format:
+    desc: Format code with black and isort
+    cmds:
+      - "{{.BLACK_CMD}} {{.SRC_DIR}} {{.TEST_DIR}}"
+      - "{{.ISORT_CMD}} {{.SRC_DIR}} {{.TEST_DIR}}"
+
+  lint:
+    desc: Run linting checks
+    cmds:
+      - "{{.FLAKE8_CMD}} {{.SRC_DIR}} {{.TEST_DIR}}"
+
+  typecheck:
+    desc: Run type checking with mypy
+    cmds:
+      - "{{.MYPY_CMD}} {{.SRC_DIR}}"
+
+  quality:
+    desc: Run all code quality checks
+    cmds:
+      - task: format
+      - task: lint
+      - task: typecheck
+      - task: test
+
+  clean:
+    desc: Clean up build artifacts and cache files
+    cmds:
+      - rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .coverage htmlcov/ coverage.xml
+      - find . -type d -name "__pycache__" -exec rm -rf {} +
+      - find . -type d -name "*.egg-info" -exec rm -rf {} +
+      - find . -type f -name "*.pyc" -delete
+
+  build:
+    desc: Build the package
+    cmds:
+      - "{{.PYTHON_CMD}} -m build"
+
+  autostart:enable:
+    desc: Enable autostart for the application
+    cmds:
+      - ./enable-autostart.sh
+
+  autostart:disable:
+    desc: Disable autostart for the application
+    cmds:
+      - mkdir -p ~/.config/autostart
+      - rm -f ~/.config/autostart/me.pygillier.Nightswitch.desktop
+
+  install:system:
+    desc: Install the application system-wide
+    cmds:
+      - sudo ./install.sh
