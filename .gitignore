@@ -2,3 +2,4 @@
 .*_cache/
 htmlcov/
 .coverage
+coverage.xml
