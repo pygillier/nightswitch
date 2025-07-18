@@ -70,8 +70,10 @@ class PluginManager:
 
                 try:
                     # Import the module
-                    module_path = f"src.nightswitch.plugins.{module_name}"
+                    module_path = f"nightswitch.plugins.{module_name}"
                     module = importlib.import_module(module_path)
+
+                    self.logger.debug(f"Loaded plugin from module {module_path}")
 
                     # Look for ThemePlugin subclasses
                     for name, obj in inspect.getmembers(module, inspect.isclass):

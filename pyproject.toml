@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "A PyGTK 3 application for managing night mode (dark/light theme switching) in Linux desktop environments"
 readme = "README.md"
 requires-python = ">=3.13"
+package = false
 license = {text = "MIT"}
 authors = [
     {name = "Nightswitch Team"},
@@ -121,4 +122,9 @@ markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "system: System tests",
+]
+
+[dependency-groups]
+dev = [
+    "pygobject-stubs>=2.13.0",
 ]

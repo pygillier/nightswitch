@@ -14,16 +14,13 @@ gi.require_version("Gio", "2.0")
 
 # Try to import AppIndicator3, but allow for graceful failure in test environments
 try:
-    gi.require_version("AppIndicator3", "0.1")
-    from gi.repository import AppIndicator3
-    HAS_APPINDICATOR = True
-except (ValueError, ImportError):
-    AppIndicator3 = None
-    HAS_APPINDICATOR = False
-    import sys
-    # Only show warning in non-test environments
-    if 'pytest' not in sys.modules:
-        print("WARNING: AppIndicator3 not available. System tray functionality will be limited.")
+    gi.require_version('AyatanaAppIndicator3', '0.1')
+    from gi.repository import AyatanaAppIndicator3 as appindicator
+    print("Using AyatanaAppIndicator3")
+except ValueError:
+    gi.require_version('AppIndicator3', '0.1')
+    from gi.repository import AppIndicator3 as appindicator
+    print("Using AppIndicator3")
 
 from gi.repository import Gtk, Gio, GLib
 
@@ -88,7 +85,7 @@ class SystemTrayIcon:
     def _setup_appindicator(self) -> None:
         """Set up tray icon using AppIndicator3."""
         try:
-            self._indicator = AppIndicator3.Indicator.new(
+            self._indicator = appindicator.Indicator.new(
                 "nightswitch",
                 "applications-system",  # Default icon name
                 AppIndicator3.IndicatorCategory.APPLICATION_STATUS
