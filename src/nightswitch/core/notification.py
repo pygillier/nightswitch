@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import gi
 
-gi.require_version("Gtk", "4.0")
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
 
 from .error_handler import ErrorContext, ErrorSeverity
@@ -338,7 +338,7 @@ class NotificationManager:
             if details:
                 # Add details in an expander
                 expander = Gtk.Expander(label="Details")
-                dialog.get_content_area().append(expander)
+                dialog.get_content_area().pack_start(expander, False, False, 0)
 
                 details_label = Gtk.Label(label=details)
                 details_label.set_margin_start(12)
@@ -348,7 +348,7 @@ class NotificationManager:
                 details_label.set_wrap(True)
                 details_label.set_selectable(True)
 
-                expander.set_child(details_label)
+                expander.add(details_label)
 
             dialog.connect("response", lambda dialog, response: dialog.destroy())
             dialog.present()

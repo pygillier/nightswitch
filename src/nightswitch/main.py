@@ -12,7 +12,7 @@ from typing import List, Optional
 
 import gi
 
-gi.require_version("Gtk", "4.0")
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk
 
 from .core.config import ConfigManager, get_config
@@ -388,7 +388,7 @@ class TrayApplication(Gtk.Application):
             about_dialog.set_authors(["Nightswitch Contributors"])
             about_dialog.set_license_type(Gtk.License.GPL_3_0)
 
-            about_dialog.present()
+            about_dialog.show_all()
             self.logger.debug("About dialog shown")
 
         except Exception as e:
@@ -640,7 +640,7 @@ class TrayApplication(Gtk.Application):
             if details:
                 # Add details in an expander
                 expander = Gtk.Expander(label="Details")
-                dialog.get_content_area().append(expander)
+                dialog.get_content_area().pack_start(expander, False, False, 0)
 
                 details_label = Gtk.Label(label=details)
                 details_label.set_margin_start(12)
@@ -650,7 +650,7 @@ class TrayApplication(Gtk.Application):
                 details_label.set_wrap(True)
                 details_label.set_selectable(True)
 
-                expander.set_child(details_label)
+                expander.add(details_label)
 
             dialog.connect("response", lambda dialog, response: dialog.destroy())
             dialog.present()

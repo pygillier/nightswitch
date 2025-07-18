@@ -11,7 +11,7 @@ from typing import Optional, Callable, Dict, Any, Tuple
 
 import gi
 
-gi.require_version("Gtk", "4.0")
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib, Gdk
 
 from ..core.mode_controller import ModeController, ThemeMode, get_mode_controller
@@ -101,7 +101,7 @@ class MainWindow(Gtk.ApplicationWindow):
             
             # Main container with padding
             outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-            self.set_child(outer_box)
+            self.add(outer_box)
             
             # Add padding around content
             content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -109,11 +109,11 @@ class MainWindow(Gtk.ApplicationWindow):
             content_box.set_margin_end(16)
             content_box.set_margin_top(16)
             content_box.set_margin_bottom(16)
-            outer_box.append(content_box)
+            outer_box.pack_start(content_box, True, True, 0)
             
             # Main vertical box for content
             self._main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
-            content_box.append(self._main_box)
+            content_box.pack_start(self._main_box, True, True, 0)
             
             # Create mode groups
             self._create_manual_group()
@@ -135,7 +135,7 @@ class MainWindow(Gtk.ApplicationWindow):
             # Create frame with label
             frame = Gtk.Frame()
             frame.set_label("Manual Mode")
-            self._main_box.append(frame)
+            self._main_box.pack_start(frame, False, True, 0)
             
             # Container for manual controls
             manual_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -143,38 +143,38 @@ class MainWindow(Gtk.ApplicationWindow):
             manual_box.set_margin_end(12)
             manual_box.set_margin_top(12)
             manual_box.set_margin_bottom(12)
-            frame.set_child(manual_box)
+            frame.add(manual_box)
             
             # Description label
             description = Gtk.Label()
             description.set_markup("<small>Directly control the theme with these buttons</small>")
             description.set_halign(Gtk.Align.START)
             description.set_wrap(True)
-            manual_box.append(description)
+            manual_box.pack_start(description, False, False, 0)
             
             # Button box for theme controls
             button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             button_box.set_halign(Gtk.Align.CENTER)
-            manual_box.append(button_box)
+            manual_box.pack_start(button_box, False, False, 0)
             
             # Dark theme button
             dark_button = Gtk.Button(label="Dark Theme")
             dark_button.connect("clicked", self._on_dark_button_clicked)
             dark_button.set_hexpand(True)
-            button_box.append(dark_button)
+            button_box.pack_start(dark_button, True, True, 0)
             
             # Light theme button
             light_button = Gtk.Button(label="Light Theme")
             light_button.connect("clicked", self._on_light_button_clicked)
             light_button.set_hexpand(True)
-            button_box.append(light_button)
+            button_box.pack_start(light_button, True, True, 0)
             
             # Toggle button
             toggle_button = Gtk.Button(label="Toggle Theme")
             toggle_button.connect("clicked", self._on_toggle_button_clicked)
             toggle_button.set_margin_top(8)
             toggle_button.set_hexpand(True)
-            manual_box.append(toggle_button)
+            manual_box.pack_start(toggle_button, False, False, 0)
             
             # Store reference to group
             self._manual_group = frame
@@ -191,7 +191,7 @@ class MainWindow(Gtk.ApplicationWindow):
             # Create frame with label
             frame = Gtk.Frame()
             frame.set_label("Schedule Mode")
-            self._main_box.append(frame)
+            self._main_box.pack_start(frame, False, True, 0)
             
             # Container for schedule controls
             schedule_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -199,35 +199,35 @@ class MainWindow(Gtk.ApplicationWindow):
             schedule_box.set_margin_end(12)
             schedule_box.set_margin_top(12)
             schedule_box.set_margin_bottom(12)
-            frame.set_child(schedule_box)
+            frame.add(schedule_box)
             
             # Enable switch row
             switch_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             switch_box.set_margin_bottom(8)
-            schedule_box.append(switch_box)
+            schedule_box.pack_start(switch_box, False, True, 0)
             
             switch_label = Gtk.Label(label="Enable Schedule Mode")
             switch_label.set_hexpand(True)
             switch_label.set_halign(Gtk.Align.START)
-            switch_box.append(switch_label)
+            switch_box.pack_start(switch_label, True, True, 0)
             
             self._schedule_switch = Gtk.Switch()
             self._schedule_switch.set_halign(Gtk.Align.END)
             self._schedule_switch.connect("state-set", self._on_schedule_switch_toggled)
-            switch_box.append(self._schedule_switch)
+            switch_box.pack_start(self._schedule_switch, False, False, 0)
             
             # Description label
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes at specific times</small>")
             description.set_halign(Gtk.Align.START)
             description.set_wrap(True)
-            schedule_box.append(description)
+            schedule_box.pack_start(description, False, False, 0)
             
             # Time settings grid
             grid = Gtk.Grid()
             grid.set_column_spacing(12)
             grid.set_row_spacing(8)
-            schedule_box.append(grid)
+            schedule_box.pack_start(grid, False, False, 0)
             
             # Dark time row
             dark_label = Gtk.Label(label="Switch to Dark:")
@@ -257,14 +257,14 @@ class MainWindow(Gtk.ApplicationWindow):
             apply_button = Gtk.Button(label="Apply Schedule")
             apply_button.connect("clicked", self._on_apply_schedule_clicked)
             apply_button.set_margin_top(8)
-            schedule_box.append(apply_button)
+            schedule_box.pack_start(apply_button, False, False, 0)
             
             # Next trigger info label
             self._next_schedule_label = Gtk.Label()
             self._next_schedule_label.set_markup("<small>No schedule active</small>")
             self._next_schedule_label.set_halign(Gtk.Align.START)
             self._next_schedule_label.set_margin_top(4)
-            schedule_box.append(self._next_schedule_label)
+            schedule_box.pack_start(self._next_schedule_label, False, False, 0)
             
             # Store reference to group
             self._schedule_group = frame
@@ -281,7 +281,7 @@ class MainWindow(Gtk.ApplicationWindow):
             # Create frame with label
             frame = Gtk.Frame()
             frame.set_label("Location Mode")
-            self._main_box.append(frame)
+            self._main_box.pack_start(frame, False, True, 0)
             
             # Container for location controls
             location_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -289,51 +289,51 @@ class MainWindow(Gtk.ApplicationWindow):
             location_box.set_margin_end(12)
             location_box.set_margin_top(12)
             location_box.set_margin_bottom(12)
-            frame.set_child(location_box)
+            frame.add(location_box)
             
             # Enable switch row
             switch_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             switch_box.set_margin_bottom(8)
-            location_box.append(switch_box)
+            location_box.pack_start(switch_box, False, True, 0)
             
             switch_label = Gtk.Label(label="Enable Location Mode")
             switch_label.set_hexpand(True)
             switch_label.set_halign(Gtk.Align.START)
-            switch_box.append(switch_label)
+            switch_box.pack_start(switch_label, True, True, 0)
             
             self._location_switch = Gtk.Switch()
             self._location_switch.set_halign(Gtk.Align.END)
             self._location_switch.connect("state-set", self._on_location_switch_toggled)
-            switch_box.append(self._location_switch)
+            switch_box.pack_start(self._location_switch, False, False, 0)
             
             # Description label
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes based on sunrise and sunset times</small>")
             description.set_halign(Gtk.Align.START)
             description.set_wrap(True)
-            location_box.append(description)
+            location_box.pack_start(description, False, False, 0)
             
             # Auto-location switch
             auto_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            location_box.append(auto_box)
+            location_box.pack_start(auto_box, False, True, 0)
             
             auto_label = Gtk.Label(label="Auto-detect Location")
             auto_label.set_hexpand(True)
             auto_label.set_halign(Gtk.Align.START)
-            auto_box.append(auto_label)
+            auto_box.pack_start(auto_label, True, True, 0)
             
             self._auto_location_switch = Gtk.Switch()
             self._auto_location_switch.set_active(True)
             self._auto_location_switch.set_halign(Gtk.Align.END)
             self._auto_location_switch.connect("state-set", self._on_auto_location_switch_toggled)
-            auto_box.append(self._auto_location_switch)
+            auto_box.pack_start(self._auto_location_switch, False, False, 0)
             
             # Manual coordinates grid
             coords_grid = Gtk.Grid()
             coords_grid.set_column_spacing(12)
             coords_grid.set_row_spacing(8)
             coords_grid.set_margin_top(8)
-            location_box.append(coords_grid)
+            location_box.pack_start(coords_grid, False, False, 0)
             
             # Latitude row
             lat_label = Gtk.Label(label="Latitude:")
@@ -359,21 +359,21 @@ class MainWindow(Gtk.ApplicationWindow):
             apply_button = Gtk.Button(label="Apply Location")
             apply_button.connect("clicked", self._on_apply_location_clicked)
             apply_button.set_margin_top(8)
-            location_box.append(apply_button)
+            location_box.pack_start(apply_button, False, False, 0)
             
             # Location info label
             self._location_info_label = Gtk.Label()
             self._location_info_label.set_markup("<small>No location detected</small>")
             self._location_info_label.set_halign(Gtk.Align.START)
             self._location_info_label.set_margin_top(4)
-            location_box.append(self._location_info_label)
+            location_box.pack_start(self._location_info_label, False, False, 0)
             
             # Next event info label
             self._next_event_label = Gtk.Label()
             self._next_event_label.set_markup("<small>No sunrise/sunset data available</small>")
             self._next_event_label.set_halign(Gtk.Align.START)
             self._next_event_label.set_margin_top(4)
-            location_box.append(self._next_event_label)
+            location_box.pack_start(self._next_event_label, False, False, 0)
             
             # Store reference to group
             self._location_group = frame
@@ -396,10 +396,10 @@ class MainWindow(Gtk.ApplicationWindow):
             self._status_label.set_markup("<small>Ready</small>")
             self._status_label.set_halign(Gtk.Align.START)
             self._status_label.set_hexpand(True)
-            self._status_bar.append(self._status_label)
+            self._status_bar.pack_start(self._status_label, True, True, 0)
             
             # Add status bar to main box
-            self._main_box.append(self._status_bar)
+            self._main_box.pack_start(self._status_bar, False, False, 0)
             
             self.logger.debug("Status bar created")
             
@@ -466,10 +466,12 @@ class MainWindow(Gtk.ApplicationWindow):
         # In GTK4, we need to use CSS for visual indication of active mode
         if is_manual_active:
             # Add visual indication that manual mode is active
-            self._manual_group.add_css_class("active-mode-frame")
+            context = self._manual_group.get_style_context()
+            context.add_class("active-mode-frame")
         else:
             # Remove visual indication
-            self._manual_group.remove_css_class("active-mode-frame")
+            context = self._manual_group.get_style_context()
+            context.remove_class("active-mode-frame")
 
     def _update_schedule_ui(self, current_mode: ThemeMode) -> None:
         """
@@ -507,9 +509,11 @@ class MainWindow(Gtk.ApplicationWindow):
             
             # Visual indication of active mode
             if is_schedule_active:
-                self._schedule_group.add_css_class("active-mode-frame")
+                context = self._schedule_group.get_style_context()
+                context.add_class("active-mode-frame")
             else:
-                self._schedule_group.remove_css_class("active-mode-frame")
+                context = self._schedule_group.get_style_context()
+                context.remove_class("active-mode-frame")
                 
         except Exception as e:
             self.logger.error(f"Failed to update schedule UI: {e}")
@@ -565,9 +569,11 @@ class MainWindow(Gtk.ApplicationWindow):
             
             # Visual indication of active mode
             if is_location_active:
-                self._location_group.add_css_class("active-mode-frame")
+                context = self._location_group.get_style_context()
+                context.add_class("active-mode-frame")
             else:
-                self._location_group.remove_css_class("active-mode-frame")
+                context = self._location_group.get_style_context()
+                context.remove_class("active-mode-frame")
                 
         except Exception as e:
             self.logger.error(f"Failed to update location UI: {e}")

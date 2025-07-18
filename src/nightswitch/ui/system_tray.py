@@ -9,7 +9,7 @@ import logging
 from typing import Optional, Callable, Any
 import gi
 
-gi.require_version("Gtk", "4.0")
+gi.require_version("Gtk", "3.0")
 gi.require_version("Gio", "2.0")
 
 # Try to import AppIndicator3, but allow for graceful failure in test environments
@@ -93,6 +93,7 @@ class SystemTrayIcon:
                 "applications-system",  # Default icon name
                 AppIndicator3.IndicatorCategory.APPLICATION_STATUS
             )
+            self.logger.debug("Indicator instance created")
             
             # Set icon based on current theme
             self._update_icon()
@@ -111,47 +112,12 @@ class SystemTrayIcon:
     def _setup_menu(self) -> None:
         """Set up the context menu for the tray icon."""
         try:
-            # Create menu using Gio.Menu for GTK 4 compatibility
-            self._menu_model = Gio.Menu()
-            
-            # Create sections for better organization
-            status_section = Gio.Menu()
-            theme_section = Gio.Menu()
-            mode_section = Gio.Menu()
-            app_section = Gio.Menu()
-            
-            # Status section (will be updated dynamically)
-            status_section.append("Manual | Light", "app.status")
-            
-            # Theme switching section
-            theme_section.append("Switch to Dark", "app.switch-dark")
-            theme_section.append("Switch to Light", "app.switch-light")
-            theme_section.append("Toggle Theme", "app.toggle-theme")
-            
-            # Mode switching section
-            mode_section.append("Manual Mode", "app.manual-mode")
-            mode_section.append("Schedule Mode", "app.schedule-mode")
-            mode_section.append("Location Mode", "app.location-mode")
-            
-            # Application section
-            app_section.append("Show Window", "app.show-window")
-            app_section.append("Quit", "app.quit")
-            
-            # Add sections to main menu
-            self._menu_model.append_section(None, status_section)
-            self._menu_model.append_section(None, theme_section)
-            self._menu_model.append_section(None, mode_section)
-            self._menu_model.append_section(None, app_section)
-
-            # Create GTK menu from model for AppIndicator3 compatibility
-            # AppIndicator3 needs a menu, but GTK 4 doesn't have Gtk.Menu
-            # We'll use a PopoverMenu instead or create a simple menu structure
+            # In GTK3, we can directly create a Gtk.Menu for AppIndicator3
             try:
-                # Try to create a simple menu structure for AppIndicator3
-                # Since GTK 4 removed Gtk.Menu, we'll use a different approach
-                self._menu = self._create_gtk4_compatible_menu()
+                # Create a GTK3 menu for AppIndicator3
+                self._menu = self._create_gtk3_menu()
             except Exception as e:
-                self.logger.warning(f"Failed to create GTK 4 compatible menu: {e}")
+                self.logger.warning(f"Failed to create GTK3 menu: {e}")
                 self._menu = None
 
             # Set menu for indicator
@@ -167,12 +133,11 @@ class SystemTrayIcon:
             self.logger.error(f"Failed to create tray menu: {e}")
             raise
 
-    def _create_gtk4_compatible_menu(self) -> Any:
+    def _create_gtk3_menu(self) -> Any:
         """
-        Create a menu compatible with GTK 4 and AppIndicator3.
+        Create a menu compatible with GTK 3 and AppIndicator3.
         
-        Since GTK 4 removed Gtk.Menu, we need to create a compatible menu structure
-        that works with AppIndicator3 which still expects the older menu style.
+        GTK 3 has native support for Gtk.Menu which works well with AppIndicator3.
         
         Returns:
             Menu object compatible with AppIndicator3
@@ -183,11 +148,7 @@ class SystemTrayIcon:
             self._mode_items = {}
             self._status_item = None
             
-            # Set up menu actions for GTK 4 compatibility
-            self._setup_menu_actions()
-            
             # Create a menu structure for AppIndicator3
-            # We use a simplified approach that works with GTK 4
             menu = self._create_appindicator_menu_structure()
             
             self.logger.debug("Created menu for AppIndicator3")
@@ -202,73 +163,67 @@ class SystemTrayIcon:
         Create a menu structure for AppIndicator3.
         
         This method creates a menu structure that works with AppIndicator3
-        in a GTK 4 environment by using a compatible approach.
+        in a GTK 3 environment.
         
         Returns:
             A menu object compatible with AppIndicator3
         """
         try:
-            # Import Gtk3 for AppIndicator3 compatibility
-            # We need to use gi.repository.Gtk from the version that AppIndicator3 expects
-            import gi
-            gi.require_version('Gtk', '3.0')  # AppIndicator3 expects GTK 3
-            from gi.repository import Gtk as Gtk3
-            
             # Create a GTK3 menu for AppIndicator3
-            menu = Gtk3.Menu()
+            menu = Gtk.Menu()
             
             # Status section
-            self._status_item = Gtk3.MenuItem(label=f"Status: {self._current_status}")
+            self._status_item = Gtk.MenuItem(label=f"Status: {self._current_status}")
             self._status_item.set_sensitive(False)  # Not clickable
             menu.append(self._status_item)
             
             # Separator
-            menu.append(Gtk3.SeparatorMenuItem())
+            menu.append(Gtk.SeparatorMenuItem())
             
             # Theme switching section (only active in manual mode)
-            dark_item = Gtk3.MenuItem(label="Switch to Dark")
+            dark_item = Gtk.MenuItem(label="Switch to Dark")
             dark_item.connect("activate", self._on_switch_to_dark)
             menu.append(dark_item)
             self._theme_items["dark"] = dark_item
             
-            light_item = Gtk3.MenuItem(label="Switch to Light")
+            light_item = Gtk.MenuItem(label="Switch to Light")
             light_item.connect("activate", self._on_switch_to_light)
             menu.append(light_item)
             self._theme_items["light"] = light_item
             
-            toggle_item = Gtk3.MenuItem(label="Toggle Theme")
+            toggle_item = Gtk.MenuItem(label="Toggle Theme")
             toggle_item.connect("activate", self._on_toggle_theme)
             menu.append(toggle_item)
             self._theme_items["toggle"] = toggle_item
             
             # Separator
-            menu.append(Gtk3.SeparatorMenuItem())
+            menu.append(Gtk.SeparatorMenuItem())
             
             # Mode switching section
-            manual_item = Gtk3.MenuItem(label="Manual Mode")
+            manual_item = Gtk.MenuItem(label="Manual Mode")
             manual_item.connect("activate", self._on_manual_mode)
             menu.append(manual_item)
             self._mode_items["manual"] = manual_item
             
-            schedule_item = Gtk3.MenuItem(label="Schedule Mode")
+            schedule_item = Gtk.MenuItem(label="Schedule Mode")
             schedule_item.connect("activate", self._on_schedule_mode)
             menu.append(schedule_item)
             self._mode_items["schedule"] = schedule_item
             
-            location_item = Gtk3.MenuItem(label="Location Mode")
+            location_item = Gtk.MenuItem(label="Location Mode")
             location_item.connect("activate", self._on_location_mode)
             menu.append(location_item)
             self._mode_items["location"] = location_item
             
             # Separator
-            menu.append(Gtk3.SeparatorMenuItem())
+            menu.append(Gtk.SeparatorMenuItem())
             
             # Application section
-            show_window_item = Gtk3.MenuItem(label="Show Window")
+            show_window_item = Gtk.MenuItem(label="Show Window")
             show_window_item.connect("activate", self._on_show_window)
             menu.append(show_window_item)
             
-            quit_item = Gtk3.MenuItem(label="Quit")
+            quit_item = Gtk.MenuItem(label="Quit")
             quit_item.connect("activate", self._on_quit)
             menu.append(quit_item)
             
@@ -281,7 +236,7 @@ class SystemTrayIcon:
         except Exception as e:
             self.logger.error(f"Failed to create AppIndicator3 menu structure: {e}")
             
-            # Fallback to a simple menu if GTK3 import fails
+            # Fallback to a simple menu if menu creation fails
             return self._create_simple_menu()
             
     def _create_simple_menu(self) -> Any:
