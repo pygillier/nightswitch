@@ -118,11 +118,11 @@ class MainWindow(Gtk.ApplicationWindow):
             
             # Add menu items
             preferences_item = Gtk.MenuItem.new_with_label("Preferences")
-            preferences_item.connect("clicked", self._on_preferences_clicked)
+            preferences_item.connect("activate", self._on_preferences_clicked)
             menu.append(preferences_item)
             
             help_item = Gtk.MenuItem.new_with_label("Help")
-            help_item.connect("clicked", self._on_help_clicked)
+            help_item.connect("activate", self._on_help_clicked)
             menu.append(help_item)
             
             menu.show_all()
@@ -452,14 +452,34 @@ class MainWindow(Gtk.ApplicationWindow):
             self._location_handler.add_status_callback(self._on_location_status_changed)
             self._location_handler.add_error_callback(self._on_location_error)
             
-            # Set up window close handler
-            # self.connect("close-request", self._on_close_request)
+            # Set up window close handler for GTK3
+            # This ensures the window is hidden instead of destroyed when closed
+            self.connect("delete-event", self._on_delete_event)
             
             self.logger.debug("Callbacks set up")
             
         except Exception as e:
             self.logger.error(f"Failed to set up callbacks: {e}")
             raise
+            
+    def _on_delete_event(self, widget, event) -> bool:
+        """
+        Handle window close event.
+        
+        This method is called when the user clicks the close button in the window's
+        title bar. Instead of destroying the window, we hide it and keep the application
+        running in the system tray.
+        
+        Args:
+            widget: The window widget
+            event: The delete event
+            
+        Returns:
+            True to stop the event from propagating (prevents window destruction)
+        """
+        self.logger.debug("Window close requested, hiding instead of destroying")
+        self.hide()
+        return True  # Returning True prevents the window from being destroyed
 
     def _update_ui_state(self) -> None:
         """Update UI components based on current application state."""
@@ -1072,46 +1092,47 @@ class MainWindow(Gtk.ApplicationWindow):
         dialog.destroy()
             
     def _show_help_dialog(self) -> None:
-        """Show the help dialog."""
-        dialog = Gtk.Dialog(
-            title="Help",
-            parent=self,
-            flags=Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-            buttons=("Close", Gtk.ResponseType.CLOSE)
-        )
-        dialog.set_default_size(400, 300)
-        
-        # Create content area
-        content_area = dialog.get_content_area()
-        content_area.set_spacing(10)
-        content_area.set_margin_start(12)
-        content_area.set_margin_end(12)
-        content_area.set_margin_top(12)
-        content_area.set_margin_bottom(12)
-        
-        # Add help content
-        help_label = Gtk.Label()
-        help_label.set_markup(
-            "<b>Nightswitch Help</b>\n\n"
-            "<b>Manual Mode:</b>\n"
-            "Directly control the theme with the Dark/Light buttons.\n\n"
-            "<b>Schedule Mode:</b>\n"
-            "Set specific times to automatically switch between dark and light themes.\n\n"
-            "<b>Location Mode:</b>\n"
-            "Automatically switch themes based on sunrise and sunset times for your location.\n\n"
-            "<b>System Tray:</b>\n"
-            "Use the system tray icon to quickly toggle themes or access settings."
-        )
-        help_label.set_line_wrap(True)
-        help_label.set_halign(Gtk.Align.START)
-        help_label.set_valign(Gtk.Align.START)
-        
-        content_area.pack_start(help_label, True, True, 0)
-        
-        # Show the dialog
-        dialog.show_all()
-        dialog.run()
-        dialog.destroy()
+        try:
+            """Show the help dialog."""
+            dialog = Gtk.Dialog(
+                title="Help",
+                parent=self,
+                flags=Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                buttons=("Close", Gtk.ResponseType.CLOSE)
+            )
+            dialog.set_default_size(400, 300)
+            
+            # Create content area
+            content_area = dialog.get_content_area()
+            content_area.set_spacing(10)
+            content_area.set_margin_start(12)
+            content_area.set_margin_end(12)
+            content_area.set_margin_top(12)
+            content_area.set_margin_bottom(12)
+            
+            # Add help content
+            help_label = Gtk.Label()
+            help_label.set_markup(
+                "<b>Nightswitch Help</b>\n\n"
+                "<b>Manual Mode:</b>\n"
+                "Directly control the theme with the Dark/Light buttons.\n\n"
+                "<b>Schedule Mode:</b>\n"
+                "Set specific times to automatically switch between dark and light themes.\n\n"
+                "<b>Location Mode:</b>\n"
+                "Automatically switch themes based on sunrise and sunset times for your location.\n\n"
+                "<b>System Tray:</b>\n"
+                "Use the system tray icon to quickly toggle themes or access settings."
+            )
+            help_label.set_line_wrap(True)
+            help_label.set_halign(Gtk.Align.START)
+            help_label.set_valign(Gtk.Align.START)
+            
+            content_area.pack_start(help_label, True, True, 0)
+            
+            # Show the dialog
+            dialog.show_all()
+            dialog.run()
+            dialog.destroy()
         except Exception as e:
             self.logger.error(f"Error showing about dialog: {e}")
             self._show_error_dialog(f"Error showing about dialog: {e}")
