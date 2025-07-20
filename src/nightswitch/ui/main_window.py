@@ -2,12 +2,11 @@
 Main application window for Nightswitch.
 
 This module provides the MainWindow class that implements the primary user interface
-for the Nightswitch application, including controls for manual, schedule, and
-location-based theme switching.
+for the Nightswitch application, integrating the various tab components.
 """
 
 import logging
-from typing import Optional, Callable, Dict, Any, Tuple
+from typing import Optional, Callable, Dict, Any
 
 import gi
 
@@ -15,10 +14,17 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib, Gdk
 
 from ..core.mode_controller import ModeController, ThemeMode, get_mode_controller
-from ..core.manual_mode import ThemeType
 from ..core.schedule_mode import get_schedule_mode_handler
 from ..core.location_mode import get_location_mode_handler
 from ..services.location import get_location_service
+
+from .tabs.manual_tab import ManualTab
+from .tabs.schedule_tab import ScheduleTab
+from .tabs.location_tab import LocationTab
+from .tabs.preferences_tab import PreferencesTab
+from .dialogs.about_dialog import show_about_dialog
+from .dialogs.help_dialog import show_help_dialog
+from .dialogs.error_dialog import show_error_dialog
 
 
 class MainWindow(Gtk.ApplicationWindow):
@@ -54,28 +60,17 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_resizable(False)
         
         # UI components
-        self._main_box = None
+        self._notebook = None
         self._header_bar = None
-        self._manual_group = None
-        self._schedule_group = None
-        self._location_group = None
-        
-        # Schedule mode widgets
-        self._dark_time_entry = None
-        self._light_time_entry = None
-        self._schedule_switch = None
-        
-        # Location mode widgets
-        self._location_switch = None
-        self._auto_location_switch = None
-        self._latitude_entry = None
-        self._longitude_entry = None
-        self._location_info_label = None
-        self._next_event_label = None
-        
-        # Status widgets
+        self._main_box = None
         self._status_bar = None
         self._status_label = None
+        
+        # Tab components
+        self._manual_tab = None
+        self._schedule_tab = None
+        self._location_tab = None
+        self._preferences_tab = None
         
         # Set up UI
         self._setup_ui()
@@ -148,10 +143,7 @@ class MainWindow(Gtk.ApplicationWindow):
             content_box.pack_start(self._notebook, True, True, 0)
             
             # Create mode tabs
-            self._create_manual_tab()
-            self._create_schedule_tab()
-            self._create_location_tab()
-            self._create_preferences_tab()
+            self._create_tabs()
             
             # Main vertical box for status bar
             self._main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -166,310 +158,60 @@ class MainWindow(Gtk.ApplicationWindow):
             self.logger.error(f"Failed to set up UI: {e}")
             raise
 
-    def _create_manual_tab(self) -> None:
-        """Create manual mode tab with Dark/Light options."""
+    def _create_tabs(self) -> None:
+        """Create all tabs for the notebook."""
         try:
-            # Container for manual controls
-            manual_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            manual_box.set_margin_start(12)
-            manual_box.set_margin_end(12)
-            manual_box.set_margin_top(12)
-            manual_box.set_margin_bottom(12)
-            
-            # Create tab label with icon
-            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-            icon = Gtk.Image.new_from_icon_name("preferences-desktop-theme-symbolic", Gtk.IconSize.MENU)
-            label = Gtk.Label(label="Manual Mode")
-            tab_label.pack_start(icon, False, False, 0)
-            tab_label.pack_start(label, False, False, 0)
-            tab_label.show_all()
-            
-            # Add the tab to the notebook
-            self._notebook.append_page(manual_box, tab_label)
-            
-            # Create frame for visual grouping
-            frame = Gtk.Frame()
-            frame.set_shadow_type(Gtk.ShadowType.NONE)
-            manual_box.pack_start(frame, True, True, 0)
-            
-            # Container inside frame
-            inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            inner_box.set_margin_start(12)
-            inner_box.set_margin_end(12)
-            inner_box.set_margin_top(12)
-            inner_box.set_margin_bottom(12)
-            frame.add(inner_box)
-            
-            # Description label
-            description = Gtk.Label()
-            description.set_markup("<small>Directly control the theme with these buttons</small>")
-            description.set_halign(Gtk.Align.START)
-            inner_box.pack_start(description, False, False, 0)
-            
-            # Button box for theme controls
-            button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            button_box.set_halign(Gtk.Align.CENTER)
-            inner_box.pack_start(button_box, False, False, 0)
-            
-            # Dark theme button
-            dark_button = Gtk.Button(label="Dark Theme")
-            dark_button.connect("clicked", self._on_dark_button_clicked)
-            dark_button.set_hexpand(True)
-            button_box.pack_start(dark_button, True, True, 0)
-            
-            # Light theme button
-            light_button = Gtk.Button(label="Light Theme")
-            light_button.connect("clicked", self._on_light_button_clicked)
-            light_button.set_hexpand(True)
-            button_box.pack_start(light_button, True, True, 0)
-            
-            # Toggle button
-            toggle_button = Gtk.Button(label="Toggle Theme")
-            toggle_button.connect("clicked", self._on_toggle_button_clicked)
-            toggle_button.set_margin_top(8)
-            toggle_button.set_hexpand(True)
-            inner_box.pack_start(toggle_button, False, False, 0)
-            
-            # Store reference to group
-            self._manual_group = frame
-            
-            self.logger.debug("Manual mode group created")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to create manual group: {e}")
-            raise
-
-    def _create_schedule_tab(self) -> None:
-        """Create schedule mode tab with time input fields."""
-        try:
-            # Container for schedule controls
-            schedule_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            schedule_box.set_margin_start(12)
-            schedule_box.set_margin_end(12)
-            schedule_box.set_margin_top(12)
-            schedule_box.set_margin_bottom(12)
-            
-            # Create tab label with icon
-            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-            icon = Gtk.Image.new_from_icon_name("appointment-soon-symbolic", Gtk.IconSize.MENU)
-            label = Gtk.Label(label="Schedule Mode")
-            tab_label.pack_start(icon, False, False, 0)
-            tab_label.pack_start(label, False, False, 0)
-            tab_label.show_all()
-            
-            # Add the tab to the notebook
-            self._notebook.append_page(schedule_box, tab_label)
-            
-            # Create frame for visual grouping
-            frame = Gtk.Frame()
-            frame.set_shadow_type(Gtk.ShadowType.NONE)
-            schedule_box.pack_start(frame, True, True, 0)
-            
-            # Container inside frame
-            inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            inner_box.set_margin_start(12)
-            inner_box.set_margin_end(12)
-            inner_box.set_margin_top(12)
-            inner_box.set_margin_bottom(12)
-            frame.add(inner_box)
-            
-            # Enable switch row
-            switch_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            switch_box.set_margin_bottom(8)
-            inner_box.pack_start(switch_box, False, True, 0)
-            
-            switch_label = Gtk.Label(label="Enable Schedule Mode")
-            switch_label.set_hexpand(True)
-            switch_label.set_halign(Gtk.Align.START)
-            switch_box.pack_start(switch_label, True, True, 0)
-            
+            # Create schedule switch for exclusivity with location mode
             self._schedule_switch = Gtk.Switch()
-            self._schedule_switch.set_halign(Gtk.Align.END)
-            self._schedule_switch.connect("state-set", self._on_schedule_switch_toggled)
-            switch_box.pack_start(self._schedule_switch, False, False, 0)
             
-            # Description label
-            description = Gtk.Label()
-            description.set_markup("<small>Automatically switch themes at specific times</small>")
-            description.set_halign(Gtk.Align.START)
-            inner_box.pack_start(description, False, False, 0)
-            
-            # Time settings grid
-            grid = Gtk.Grid()
-            grid.set_column_spacing(12)
-            grid.set_row_spacing(8)
-            inner_box.pack_start(grid, False, False, 0)
-            
-            # Dark time row
-            dark_label = Gtk.Label(label="Switch to Dark:")
-            dark_label.set_halign(Gtk.Align.START)
-            grid.attach(dark_label, 0, 0, 1, 1)
-            
-            self._dark_time_entry = Gtk.Entry()
-            self._dark_time_entry.set_placeholder_text("HH:MM")
-            self._dark_time_entry.set_max_length(5)
-            self._dark_time_entry.set_width_chars(5)
-            self._dark_time_entry.set_input_purpose(Gtk.InputPurpose.DIGITS)
-            grid.attach(self._dark_time_entry, 1, 0, 1, 1)
-            
-            # Light time row
-            light_label = Gtk.Label(label="Switch to Light:")
-            light_label.set_halign(Gtk.Align.START)
-            grid.attach(light_label, 0, 1, 1, 1)
-            
-            self._light_time_entry = Gtk.Entry()
-            self._light_time_entry.set_placeholder_text("HH:MM")
-            self._light_time_entry.set_max_length(5)
-            self._light_time_entry.set_width_chars(5)
-            self._light_time_entry.set_input_purpose(Gtk.InputPurpose.DIGITS)
-            grid.attach(self._light_time_entry, 1, 1, 1, 1)
-            
-            # Apply button
-            apply_button = Gtk.Button(label="Apply Schedule")
-            apply_button.connect("clicked", self._on_apply_schedule_clicked)
-            apply_button.set_margin_top(8)
-            inner_box.pack_start(apply_button, False, False, 0)
-            
-            # Next trigger info label
-            self._next_schedule_label = Gtk.Label()
-            self._next_schedule_label.set_markup("<small>No schedule active</small>")
-            self._next_schedule_label.set_halign(Gtk.Align.START)
-            self._next_schedule_label.set_margin_top(4)
-            inner_box.pack_start(self._next_schedule_label, False, False, 0)
-            
-            # Store reference to group
-            self._schedule_group = frame
-            
-            self.logger.debug("Schedule mode group created")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to create schedule group: {e}")
-            raise
-
-    def _create_location_tab(self) -> None:
-        """Create location mode tab with settings interface."""
-        try:
-            # Container for location controls
-            location_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            location_box.set_margin_start(12)
-            location_box.set_margin_end(12)
-            location_box.set_margin_top(12)
-            location_box.set_margin_bottom(12)
-            
-            # Create tab label with icon
-            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-            icon = Gtk.Image.new_from_icon_name("mark-location-symbolic", Gtk.IconSize.MENU)
-            label = Gtk.Label(label="Location Mode")
-            tab_label.pack_start(icon, False, False, 0)
-            tab_label.pack_start(label, False, False, 0)
-            tab_label.show_all()
-            
-            # Add the tab to the notebook
-            self._notebook.append_page(location_box, tab_label)
-            
-            # Create frame for visual grouping
-            frame = Gtk.Frame()
-            frame.set_shadow_type(Gtk.ShadowType.NONE)
-            location_box.pack_start(frame, True, True, 0)
-            
-            # Container inside frame
-            inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            inner_box.set_margin_start(12)
-            inner_box.set_margin_end(12)
-            inner_box.set_margin_top(12)
-            inner_box.set_margin_bottom(12)
-            frame.add(inner_box)
-            
-            # Enable switch row
-            switch_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            switch_box.set_margin_bottom(8)
-            inner_box.pack_start(switch_box, False, True, 0)
-            
-            switch_label = Gtk.Label(label="Enable Location Mode")
-            switch_label.set_hexpand(True)
-            switch_label.set_halign(Gtk.Align.START)
-            switch_box.pack_start(switch_label, True, True, 0)
-            
+            # Create location switch for exclusivity with schedule mode
             self._location_switch = Gtk.Switch()
-            self._location_switch.set_halign(Gtk.Align.END)
-            self._location_switch.connect("state-set", self._on_location_switch_toggled)
-            switch_box.pack_start(self._location_switch, False, False, 0)
             
-            # Description label
-            description = Gtk.Label()
-            description.set_markup("<small>Automatically switch themes based on sunrise and sunset times</small>")
-            description.set_halign(Gtk.Align.START)
-            inner_box.pack_start(description, False, False, 0)
+            # Create manual mode tab
+            self._manual_tab = ManualTab(
+                parent_notebook=self._notebook,
+                mode_controller=self._mode_controller,
+                status_callback=self._update_status,
+                error_callback=self._show_error_dialog
+            )
             
-            # Auto-location switch
-            auto_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            inner_box.pack_start(auto_box, False, True, 0)
+            # Create schedule mode tab
+            self._schedule_tab = ScheduleTab(
+                parent_notebook=self._notebook,
+                mode_controller=self._mode_controller,
+                schedule_handler=self._schedule_handler,
+                location_switch=self._location_switch,
+                status_callback=self._update_status,
+                error_callback=self._show_error_dialog
+            )
             
-            auto_label = Gtk.Label(label="Auto-detect Location")
-            auto_label.set_hexpand(True)
-            auto_label.set_halign(Gtk.Align.START)
-            auto_box.pack_start(auto_label, True, True, 0)
+            # Create location mode tab
+            self._location_tab = LocationTab(
+                parent_notebook=self._notebook,
+                mode_controller=self._mode_controller,
+                location_handler=self._location_handler,
+                location_service=self._location_service,
+                schedule_switch=self._schedule_switch,
+                status_callback=self._update_status,
+                error_callback=self._show_error_dialog
+            )
             
-            self._auto_location_switch = Gtk.Switch()
-            self._auto_location_switch.set_active(True)
-            self._auto_location_switch.set_halign(Gtk.Align.END)
-            self._auto_location_switch.connect("state-set", self._on_auto_location_switch_toggled)
-            auto_box.pack_start(self._auto_location_switch, False, False, 0)
+            # Create preferences tab
+            self._preferences_tab = PreferencesTab(
+                parent_notebook=self._notebook,
+                status_callback=self._update_status,
+                error_callback=self._show_error_dialog,
+                save_callback=self._save_preferences
+            )
             
-            # Manual coordinates grid
-            coords_grid = Gtk.Grid()
-            coords_grid.set_column_spacing(12)
-            coords_grid.set_row_spacing(8)
-            coords_grid.set_margin_top(8)
-            inner_box.pack_start(coords_grid, False, False, 0)
+            # Connect the switches for exclusivity
+            self._schedule_tab._schedule_switch = self._schedule_switch
+            self._location_tab._location_switch = self._location_switch
             
-            # Latitude row
-            lat_label = Gtk.Label(label="Latitude:")
-            lat_label.set_halign(Gtk.Align.START)
-            coords_grid.attach(lat_label, 0, 0, 1, 1)
-            
-            self._latitude_entry = Gtk.Entry()
-            self._latitude_entry.set_placeholder_text("e.g. 51.5074")
-            self._latitude_entry.set_input_purpose(Gtk.InputPurpose.NUMBER)
-            coords_grid.attach(self._latitude_entry, 1, 0, 1, 1)
-            
-            # Longitude row
-            lon_label = Gtk.Label(label="Longitude:")
-            lon_label.set_halign(Gtk.Align.START)
-            coords_grid.attach(lon_label, 0, 1, 1, 1)
-            
-            self._longitude_entry = Gtk.Entry()
-            self._longitude_entry.set_placeholder_text("e.g. -0.1278")
-            self._longitude_entry.set_input_purpose(Gtk.InputPurpose.NUMBER)
-            coords_grid.attach(self._longitude_entry, 1, 1, 1, 1)
-            
-            # Apply button
-            apply_button = Gtk.Button(label="Apply Location")
-            apply_button.connect("clicked", self._on_apply_location_clicked)
-            apply_button.set_margin_top(8)
-            inner_box.pack_start(apply_button, False, False, 0)
-            
-            # Location info label
-            self._location_info_label = Gtk.Label()
-            self._location_info_label.set_markup("<small>No location detected</small>")
-            self._location_info_label.set_halign(Gtk.Align.START)
-            self._location_info_label.set_margin_top(4)
-            inner_box.pack_start(self._location_info_label, False, False, 0)
-            
-            # Next event info label
-            self._next_event_label = Gtk.Label()
-            self._next_event_label.set_markup("<small>No sunrise/sunset data available</small>")
-            self._next_event_label.set_halign(Gtk.Align.START)
-            self._next_event_label.set_margin_top(4)
-            inner_box.pack_start(self._next_event_label, False, False, 0)
-            
-            # Store reference to group
-            self._location_group = frame
-            
-            self.logger.debug("Location mode group created")
+            self.logger.debug("Tabs created")
             
         except Exception as e:
-            self.logger.error(f"Failed to create location group: {e}")
+            self.logger.error(f"Failed to create tabs: {e}")
             raise
 
     def _create_status_bar(self) -> None:
@@ -545,10 +287,10 @@ class MainWindow(Gtk.ApplicationWindow):
             current_mode = self._mode_controller.get_current_mode()
             current_theme = self._mode_controller.get_current_theme()
             
-            # Update mode-specific UI elements
-            self._update_manual_ui(current_mode)
-            self._update_schedule_ui(current_mode)
-            self._update_location_ui(current_mode)
+            # Update tab UI states
+            self._manual_tab.update_ui_state(current_mode)
+            self._schedule_tab.update_ui_state(current_mode)
+            self._location_tab.update_ui_state(current_mode)
             
             # Update status label
             mode_text = current_mode.value.title() if current_mode else "Unknown"
@@ -561,442 +303,70 @@ class MainWindow(Gtk.ApplicationWindow):
             self.logger.error(f"Failed to update UI state: {e}")
             self._status_label.set_markup("<small>Error updating UI state</small>")
 
-    def _update_manual_ui(self, current_mode: ThemeMode) -> None:
+    def _on_mode_changed(self, new_mode: ThemeMode, old_mode: Optional[ThemeMode]) -> None:
         """
-        Update manual mode UI components.
+        Handle mode change events.
         
         Args:
-            current_mode: Current active mode
+            new_mode: New mode
+            old_mode: Previous mode
         """
-        # Manual mode is always available but may be disabled if another mode is active
-        is_manual_active = (current_mode == ThemeMode.MANUAL)
-        
-        # In GTK4, we need to use CSS for visual indication of active mode
-        if is_manual_active:
-            # Add visual indication that manual mode is active
-            context = self._manual_group.get_style_context()
-            context.add_class("active-mode-frame")
-        else:
-            # Remove visual indication
-            context = self._manual_group.get_style_context()
-            context.remove_class("active-mode-frame")
+        self._update_ui_state()
 
-    def _update_schedule_ui(self, current_mode: ThemeMode) -> None:
+    def _on_theme_changed(self, theme) -> None:
         """
-        Update schedule mode UI components.
+        Handle theme change events.
         
         Args:
-            current_mode: Current active mode
+            theme: New theme
         """
-        try:
-            # Check if schedule mode is active
-            is_schedule_active = (current_mode == ThemeMode.SCHEDULE)
-            
-            # Update switch state without triggering callback
-            self._schedule_switch.set_active(is_schedule_active)
-            
-            # Get schedule times if available
-            dark_time, light_time = self._schedule_handler.get_schedule_times()
-            
-            # Update time entries
-            if dark_time:
-                self._dark_time_entry.set_text(dark_time)
-            
-            if light_time:
-                self._light_time_entry.set_text(light_time)
-            
-            # Update next trigger info
-            next_trigger = self._schedule_handler.get_next_trigger()
-            if next_trigger and is_schedule_active:
-                time_str, theme_str = next_trigger
-                self._next_schedule_label.set_markup(
-                    f"<small>Next: Switch to {theme_str} at {time_str}</small>"
-                )
-            else:
-                self._next_schedule_label.set_markup("<small>No schedule active</small>")
-            
-            # Visual indication of active mode
-            if is_schedule_active:
-                context = self._schedule_group.get_style_context()
-                context.add_class("active-mode-frame")
-            else:
-                context = self._schedule_group.get_style_context()
-                context.remove_class("active-mode-frame")
-                
-        except Exception as e:
-            self.logger.error(f"Failed to update schedule UI: {e}")
-            self._next_schedule_label.set_markup("<small>Error updating schedule information</small>")
+        self._update_ui_state()
 
-    def _update_location_ui(self, current_mode: ThemeMode) -> None:
+    def _on_schedule_status_changed(self, status: str) -> None:
         """
-        Update location mode UI components.
+        Handle schedule status change events.
         
         Args:
-            current_mode: Current active mode
+            status: New status message
         """
-        try:
-            # Check if location mode is active
-            is_location_active = (current_mode == ThemeMode.LOCATION)
-            
-            # Update switch state without triggering callback
-            self._location_switch.set_active(is_location_active)
-            
-            # Update auto-location switch
-            is_auto_location = self._location_handler.is_auto_location()
-            self._auto_location_switch.set_active(is_auto_location)
-            
-            # Enable/disable coordinate entries based on auto-location
-            self._latitude_entry.set_sensitive(not is_auto_location)
-            self._longitude_entry.set_sensitive(not is_auto_location)
-            
-            # Get current location if available
-            location = self._location_handler.get_current_location()
-            if location and is_location_active:
-                lat, lon, description = location
-                
-                # Update coordinate entries if using manual location
-                if not is_auto_location:
-                    self._latitude_entry.set_text(str(lat))
-                    self._longitude_entry.set_text(str(lon))
-                
-                # Update location info label
-                self._location_info_label.set_markup(f"<small>Location: {description}</small>")
-                
-                # Update next event info
-                next_event = self._location_handler.get_next_sun_event()
-                if next_event:
-                    event_time, event_type, event_date = next_event
-                    self._next_event_label.set_markup(
-                        f"<small>Next: {event_type.title()} at {event_time}</small>"
-                    )
-                else:
-                    self._next_event_label.set_markup("<small>No sunrise/sunset data available</small>")
-            else:
-                self._location_info_label.set_markup("<small>No location detected</small>")
-                self._next_event_label.set_markup("<small>No sunrise/sunset data available</small>")
-            
-            # Visual indication of active mode
-            if is_location_active:
-                context = self._location_group.get_style_context()
-                context.add_class("active-mode-frame")
-            else:
-                context = self._location_group.get_style_context()
-                context.remove_class("active-mode-frame")
-                
-        except Exception as e:
-            self.logger.error(f"Failed to update location UI: {e}")
-            self._location_info_label.set_markup("<small>Error updating location information</small>")
+        self._update_status(status)
 
-    def _on_dark_button_clicked(self, button: Gtk.Button) -> None:
+    def _on_location_status_changed(self, status: str) -> None:
         """
-        Handle dark theme button click.
+        Handle location status change events.
         
         Args:
-            button: Button that was clicked
+            status: New status message
         """
-        try:
-            self._status_label.set_markup("<small>Switching to dark theme...</small>")
-            success = self._mode_controller.manual_switch_to_dark()
-            
-            if not success:
-                self._status_label.set_markup("<small>Failed to switch to dark theme</small>")
-                self._show_error_dialog("Failed to switch to dark theme")
-                
-        except Exception as e:
-            self.logger.error(f"Error switching to dark theme: {e}")
-            self._status_label.set_markup("<small>Error switching to dark theme</small>")
-            self._show_error_dialog(f"Error switching to dark theme: {e}")
+        self._update_status(status)
 
-    def _on_light_button_clicked(self, button: Gtk.Button) -> None:
+    def _on_location_error(self, error: str) -> None:
         """
-        Handle light theme button click.
+        Handle location error events.
         
         Args:
-            button: Button that was clicked
+            error: Error message
         """
-        try:
-            self._status_label.set_markup("<small>Switching to light theme...</small>")
-            success = self._mode_controller.manual_switch_to_light()
-            
-            if not success:
-                self._status_label.set_markup("<small>Failed to switch to light theme</small>")
-                self._show_error_dialog("Failed to switch to light theme")
-                
-        except Exception as e:
-            self.logger.error(f"Error switching to light theme: {e}")
-            self._status_label.set_markup("<small>Error switching to light theme</small>")
-            self._show_error_dialog(f"Error switching to light theme: {e}")
+        self._show_error_dialog(error)
 
-    def _on_toggle_button_clicked(self, button: Gtk.Button) -> None:
+    def _update_status(self, message: str) -> None:
         """
-        Handle toggle theme button click.
+        Update the status label with a message.
         
         Args:
-            button: Button that was clicked
+            message: Status message
         """
-        try:
-            self._status_label.set_markup("<small>Toggling theme...</small>")
-            success = self._mode_controller.manual_toggle_theme()
-            
-            if not success:
-                self._status_label.set_markup("<small>Failed to toggle theme</small>")
-                self._show_error_dialog("Failed to toggle theme")
-                
-        except Exception as e:
-            self.logger.error(f"Error toggling theme: {e}")
-            self._status_label.set_markup("<small>Error toggling theme</small>")
-            self._show_error_dialog(f"Error toggling theme: {e}")
+        self._status_label.set_markup(f"<small>{message}</small>")
 
-    def _on_schedule_switch_toggled(self, switch: Gtk.Switch, state: bool) -> bool:
+    def _show_error_dialog(self, message: str, details: Optional[str] = None) -> None:
         """
-        Handle schedule mode switch toggle.
+        Show an error dialog.
         
         Args:
-            switch: Switch that was toggled
-            state: New switch state
-            
-        Returns:
-            True to allow state change, False to prevent it
+            message: Error message
+            details: Optional detailed error information
         """
-        try:
-            if state:
-                # Get time values from entries
-                dark_time = self._dark_time_entry.get_text()
-                light_time = self._light_time_entry.get_text()
-                
-                # Validate times
-                valid, error_msg = self._schedule_handler.validate_schedule_times(dark_time, light_time)
-                if not valid:
-                    self._status_label.set_markup(f"<small>{error_msg}</small>")
-                    self._show_error_dialog(error_msg)
-                    return False  # Prevent switch from turning on
-                
-                # Ensure location mode is turned off (exclusivity)
-                self._location_switch.set_active(False)
-                
-                # Enable schedule mode
-                self._status_label.set_markup("<small>Enabling schedule mode...</small>")
-                success = self._mode_controller.set_schedule_mode(dark_time, light_time)
-                
-                if not success:
-                    self._status_label.set_markup("<small>Failed to enable schedule mode</small>")
-                    self._show_error_dialog("Failed to enable schedule mode")
-                    return False  # Prevent switch from turning on
-            else:
-                # Disable schedule mode (switch to manual)
-                self._status_label.set_markup("<small>Disabling schedule mode...</small>")
-                success = self._mode_controller.set_manual_mode()
-                
-                if not success:
-                    self._status_label.set_markup("<small>Failed to disable schedule mode</small>")
-                    self._show_error_dialog("Failed to disable schedule mode")
-                    return False  # Prevent switch from turning off
-            
-            return True  # Allow state change
-            
-        except Exception as e:
-            self.logger.error(f"Error toggling schedule mode: {e}")
-            self._status_label.set_markup("<small>Error toggling schedule mode</small>")
-            self._show_error_dialog(f"Error toggling schedule mode: {e}")
-            return False  # Prevent switch state change on error
-
-    def _on_apply_schedule_clicked(self, button: Gtk.Button) -> None:
-        """
-        Handle apply schedule button click.
-        
-        Args:
-            button: Button that was clicked
-        """
-        try:
-            # Get time values from entries
-            dark_time = self._dark_time_entry.get_text()
-            light_time = self._light_time_entry.get_text()
-            
-            # Validate times
-            valid, error_msg = self._schedule_handler.validate_schedule_times(dark_time, light_time)
-            if not valid:
-                self._status_label.set_markup(f"<small>{error_msg}</small>")
-                self._show_error_dialog(error_msg)
-                return
-            
-            # Ensure location mode is turned off (exclusivity)
-            self._location_switch.set_active(False)
-            
-            # Enable schedule mode
-            self._status_label.set_markup("<small>Applying schedule...</small>")
-            success = self._mode_controller.set_schedule_mode(dark_time, light_time)
-            
-            # Update schedule switch to reflect the new state
-            self._schedule_switch.set_active(True)
-            
-            if not success:
-                self._status_label.set_markup("<small>Failed to apply schedule</small>")
-                self._show_error_dialog("Failed to apply schedule")
-                
-        except Exception as e:
-            self.logger.error(f"Error applying schedule: {e}")
-            self._status_label.set_markup("<small>Error applying schedule</small>")
-            self._show_error_dialog(f"Error applying schedule: {e}")
-
-    def _on_location_switch_toggled(self, switch: Gtk.Switch, state: bool) -> bool:
-        """
-        Handle location mode switch toggle.
-        
-        Args:
-            switch: Switch that was toggled
-            state: New switch state
-            
-        Returns:
-            True to allow state change, False to prevent it
-        """
-        try:
-            if state:
-                # Check if we're using auto or manual location
-                is_auto = self._auto_location_switch.get_active()
-                
-                # Ensure schedule mode is turned off (exclusivity)
-                self._schedule_switch.set_active(False)
-                
-                if is_auto:
-                    # Enable location mode with auto-detection
-                    self._status_label.set_markup("<small>Enabling location mode with auto-detection...</small>")
-                    success = self._mode_controller.set_location_mode()
-                else:
-                    # Get coordinates from entries
-                    try:
-                        latitude = float(self._latitude_entry.get_text())
-                        longitude = float(self._longitude_entry.get_text())
-                    except ValueError:
-                        self._status_label.set_markup("<small>Invalid coordinates format</small>")
-                        self._show_error_dialog("Please enter valid latitude and longitude values")
-                        return False  # Prevent switch from turning on
-                    
-                    # Enable location mode with manual coordinates
-                    self._status_label.set_markup("<small>Enabling location mode with manual coordinates...</small>")
-                    success = self._mode_controller.set_location_mode(latitude, longitude)
-                
-                if not success:
-                    self._status_label.set_markup("<small>Failed to enable location mode</small>")
-                    self._show_error_dialog("Failed to enable location mode")
-                    return False  # Prevent switch from turning on
-            else:
-                # Disable location mode (switch to manual)
-                self._status_label.set_markup("<small>Disabling location mode...</small>")
-                success = self._mode_controller.set_manual_mode()
-                
-                if not success:
-                    self._status_label.set_markup("<small>Failed to disable location mode</small>")
-                    self._show_error_dialog("Failed to disable location mode")
-                    return False  # Prevent switch from turning off
-            
-            return True  # Allow state change
-            
-        except Exception as e:
-            self.logger.error(f"Error toggling location mode: {e}")
-            self._status_label.set_markup("<small>Error toggling location mode</small>")
-            self._show_error_dialog(f"Error toggling location mode: {e}")
-            return False  # Prevent switch state change on error
-
-    def _on_auto_location_switch_toggled(self, switch: Gtk.Switch, state: bool) -> bool:
-        """
-        Handle auto-location switch toggle.
-        
-        Args:
-            switch: Switch that was toggled
-            state: New switch state
-            
-        Returns:
-            True to allow state change, False to prevent it
-        """
-        try:
-            # Update sensitivity of coordinate entries
-            self._latitude_entry.set_sensitive(not state)
-            self._longitude_entry.set_sensitive(not state)
-            
-            # If location mode is active, we need to update it
-            current_mode = self._mode_controller.get_current_mode()
-            if current_mode == ThemeMode.LOCATION:
-                if state:
-                    # Switch to auto-location
-                    self._status_label.set_markup("<small>Switching to auto-location...</small>")
-                    success = self._mode_controller.set_location_mode()
-                else:
-                    # Try to get coordinates from entries
-                    try:
-                        latitude = float(self._latitude_entry.get_text())
-                        longitude = float(self._longitude_entry.get_text())
-                    except ValueError:
-                        # If no valid coordinates, just allow the switch to toggle
-                        # but don't update the location mode
-                        return True
-                    
-                    # Switch to manual coordinates
-                    self._status_label.set_markup("<small>Switching to manual coordinates...</small>")
-                    success = self._mode_controller.set_location_mode(latitude, longitude)
-                
-                if not success:
-                    self._status_label.set_markup("<small>Failed to update location mode</small>")
-                    # Allow the switch to toggle anyway
-            
-            return True  # Always allow state change
-            
-        except Exception as e:
-            self.logger.error(f"Error toggling auto-location: {e}")
-            self._status_label.set_markup("<small>Error toggling auto-location</small>")
-            return True  # Allow state change even on error
-
-    def _on_apply_location_clicked(self, button: Gtk.Button) -> None:
-        """
-        Handle apply location button click.
-        
-        Args:
-            button: Button that was clicked
-        """
-        try:
-            # Ensure schedule mode is turned off (exclusivity)
-            self._schedule_switch.set_active(False)
-            
-            # Check if we're using auto or manual location
-            is_auto = self._auto_location_switch.get_active()
-            
-            if is_auto:
-                # Enable location mode with auto-detection
-                self._status_label.set_markup("<small>Applying auto-location...</small>")
-                success = self._mode_controller.set_location_mode()
-                
-                # Update location switch to reflect the new state
-                self._location_switch.set_active(True)
-            else:
-                # Get coordinates from entries
-                try:
-                    latitude = float(self._latitude_entry.get_text())
-                    longitude = float(self._longitude_entry.get_text())
-                except ValueError:
-                    self._status_label.set_markup("<small>Invalid coordinates format</small>")
-                    self._show_error_dialog("Please enter valid latitude and longitude values")
-                    return
-                
-                # Validate coordinates
-                if not self._location_handler._validate_coordinates(latitude, longitude):
-                    self._status_label.set_markup("<small>Invalid coordinates range</small>")
-                    self._show_error_dialog("Latitude must be between -90 and 90, longitude between -180 and 180")
-                    return
-                
-                # Enable location mode with manual coordinates
-                self._status_label.set_markup("<small>Applying manual coordinates...</small>")
-                success = self._mode_controller.set_location_mode(latitude, longitude)
-                
-                # Update location switch to reflect the new state
-                self._location_switch.set_active(True)
-            
-            if not success:
-                self._status_label.set_markup("<small>Failed to apply location settings</small>")
-                self._show_error_dialog("Failed to apply location settings")
-                
-        except Exception as e:
-            self.logger.error(f"Error applying location: {e}")
-            self._status_label.set_markup("<small>Error applying location</small>")
-            self._show_error_dialog(f"Error applying location: {e}")
+        show_error_dialog(message, details, self)
 
     def _on_about_clicked(self, button: Gtk.Button) -> None:
         """
@@ -1005,29 +375,7 @@ class MainWindow(Gtk.ApplicationWindow):
         Args:
             button: Button that was clicked
         """
-        try:
-            # Create about dialog
-            dialog = Gtk.AboutDialog()
-            dialog.set_transient_for(self)
-            dialog.set_modal(True)
-            
-            # Set dialog properties
-            dialog.set_program_name("Nightswitch")
-            dialog.set_version("1.0.0")
-            dialog.set_copyright("© 2025 Nightswitch Contributors")
-            dialog.set_comments("Automatic theme switching for Linux desktop environments")
-            dialog.set_website("https://github.com/example/nightswitch")
-            dialog.set_website_label("GitHub Repository")
-            dialog.set_license_type(Gtk.License.GPL_3_0)
-            
-            # Set authors
-            dialog.set_authors(["Nightswitch Contributors"])
-            
-            # Show dialog
-            dialog.show()
-            
-        except Exception as e:
-            self.logger.error(f"Error showing about dialog: {e}")
+        show_about_dialog(self)
             
     def _on_preferences_clicked(self, menu_item: Gtk.MenuItem) -> None:
         """
@@ -1051,414 +399,21 @@ class MainWindow(Gtk.ApplicationWindow):
         Args:
             menu_item: Menu item that was clicked
         """
-        try:
-            self._show_help_dialog()
-            self.logger.debug("Help dialog requested")
-        except Exception as e:
-            self.logger.error(f"Error showing help dialog: {e}")
+        show_help_dialog(self)
             
-    def _create_preferences_tab(self) -> None:
-        """Create preferences tab with general and advanced settings."""
-        try:
-            # Container for preferences
-            preferences_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            preferences_box.set_margin_start(12)
-            preferences_box.set_margin_end(12)
-            preferences_box.set_margin_top(12)
-            preferences_box.set_margin_bottom(12)
-            
-            # Create tab label with icon
-            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-            icon = Gtk.Image.new_from_icon_name("preferences-system-symbolic", Gtk.IconSize.MENU)
-            label = Gtk.Label(label="Preferences")
-            tab_label.pack_start(icon, False, False, 0)
-            tab_label.pack_start(label, False, False, 0)
-            tab_label.show_all()
-            
-            # Add the tab to the notebook
-            self._notebook.append_page(preferences_box, tab_label)
-            
-            # Create inner notebook for preferences tabs
-            inner_notebook = Gtk.Notebook()
-            inner_notebook.set_tab_pos(Gtk.PositionType.LEFT)
-            preferences_box.pack_start(inner_notebook, True, True, 0)
-            
-            # General settings tab
-            general_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-            general_box.set_margin_start(12)
-            general_box.set_margin_end(12)
-            general_box.set_margin_top(12)
-            general_box.set_margin_bottom(12)
-            inner_notebook.append_page(general_box, Gtk.Label(label="General"))
-            
-            # Start minimized option
-            start_min_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-            start_min_label = Gtk.Label(label="Start minimized to tray")
-            start_min_label.set_halign(Gtk.Align.START)
-            start_min_label.set_hexpand(True)
-            self._start_min_switch = Gtk.Switch()
-            self._start_min_switch.set_active(True)  # Default to true
-            
-            start_min_box.pack_start(start_min_label, True, True, 0)
-            start_min_box.pack_start(self._start_min_switch, False, False, 0)
-            general_box.pack_start(start_min_box, False, False, 0)
-            
-            # Show notifications option
-            notif_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-            notif_label = Gtk.Label(label="Show notifications")
-            notif_label.set_halign(Gtk.Align.START)
-            notif_label.set_hexpand(True)
-            self._notif_switch = Gtk.Switch()
-            self._notif_switch.set_active(True)  # Default to true
-            
-            notif_box.pack_start(notif_label, True, True, 0)
-            notif_box.pack_start(self._notif_switch, False, False, 0)
-            general_box.pack_start(notif_box, False, False, 0)
-            
-            # Autostart option
-            autostart_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-            autostart_label = Gtk.Label(label="Start on system boot")
-            autostart_label.set_halign(Gtk.Align.START)
-            autostart_label.set_hexpand(True)
-            self._autostart_switch = Gtk.Switch()
-            self._autostart_switch.set_active(False)  # Default to false
-            
-            autostart_box.pack_start(autostart_label, True, True, 0)
-            autostart_box.pack_start(self._autostart_switch, False, False, 0)
-            general_box.pack_start(autostart_box, False, False, 0)
-            
-            # Advanced settings tab
-            advanced_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-            advanced_box.set_margin_start(12)
-            advanced_box.set_margin_end(12)
-            advanced_box.set_margin_top(12)
-            advanced_box.set_margin_bottom(12)
-            inner_notebook.append_page(advanced_box, Gtk.Label(label="Advanced"))
-            
-            # Log level option
-            log_level_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-            log_level_label = Gtk.Label(label="Log Level")
-            log_level_label.set_halign(Gtk.Align.START)
-            self._log_level_combo = Gtk.ComboBoxText()
-            for level in ["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]:
-                self._log_level_combo.append_text(level)
-            self._log_level_combo.set_active(0)  # Default to INFO
-            
-            log_level_box.pack_start(log_level_label, False, False, 0)
-            log_level_box.pack_start(self._log_level_combo, True, True, 0)
-            advanced_box.pack_start(log_level_box, False, False, 0)
-            
-            # Debug mode option
-            debug_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-            debug_label = Gtk.Label(label="Debug Mode")
-            debug_label.set_halign(Gtk.Align.START)
-            debug_label.set_hexpand(True)
-            self._debug_switch = Gtk.Switch()
-            self._debug_switch.set_active(False)  # Default to false
-            
-            debug_box.pack_start(debug_label, True, True, 0)
-            debug_box.pack_start(self._debug_switch, False, False, 0)
-            advanced_box.pack_start(debug_box, False, False, 0)
-            
-            # Add save button at the bottom
-            save_button = Gtk.Button(label="Save Preferences")
-            save_button.connect("clicked", self._on_save_preferences_clicked)
-            save_button.set_margin_top(10)
-            preferences_box.pack_start(save_button, False, False, 0)
-            
-            self.logger.debug("Preferences tab created")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to create preferences tab: {e}")
-            raise
-            
-    def _on_save_preferences_clicked(self, button: Gtk.Button) -> None:
+    def _save_preferences(self, preferences: Dict[str, Any]) -> None:
         """
-        Handle save preferences button click.
+        Save preferences.
         
         Args:
-            button: Button that was clicked
+            preferences: Dictionary of preferences to save
         """
         try:
-            # Get preferences values
-            start_minimized = self._start_min_switch.get_active()
-            show_notifications = self._notif_switch.get_active()
-            autostart = self._autostart_switch.get_active()
-            log_level = self._log_level_combo.get_active_text()
-            debug_mode = self._debug_switch.get_active()
-            
-            # TODO: Save preferences to configuration
-            
-            self._status_label.set_markup("<small>Preferences saved</small>")
+            # TODO: Implement saving preferences to configuration
+            self._update_status("Preferences saved")
             self.logger.info("Preferences saved")
             
         except Exception as e:
             self.logger.error(f"Error saving preferences: {e}")
-            self._status_label.set_markup("<small>Error saving preferences</small>")
+            self._update_status("Error saving preferences")
             self._show_error_dialog(f"Error saving preferences: {e}")
-            
-    def _show_help_dialog(self) -> None:
-        try:
-            """Show the help dialog."""
-            dialog = Gtk.Dialog(
-                title="Help",
-                parent=self,
-                flags=Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                buttons=("Close", Gtk.ResponseType.CLOSE)
-            )
-            dialog.set_default_size(400, 300)
-            
-            # Create content area
-            content_area = dialog.get_content_area()
-            content_area.set_spacing(10)
-            content_area.set_margin_start(12)
-            content_area.set_margin_end(12)
-            content_area.set_margin_top(12)
-            content_area.set_margin_bottom(12)
-            
-            # Add help content
-            help_label = Gtk.Label()
-            help_label.set_markup(
-                "<b>Nightswitch Help</b>\n\n"
-                "<b>Manual Mode:</b>\n"
-                "Directly control the theme with the Dark/Light buttons.\n\n"
-                "<b>Schedule Mode:</b>\n"
-                "Set specific times to automatically switch between dark and light themes.\n\n"
-                "<b>Location Mode:</b>\n"
-                "Automatically switch themes based on sunrise and sunset times for your location.\n\n"
-                "<b>System Tray:</b>\n"
-                "Use the system tray icon to quickly toggle themes or access settings."
-            )
-            help_label.set_line_wrap(True)
-            help_label.set_halign(Gtk.Align.START)
-            help_label.set_valign(Gtk.Align.START)
-            
-            content_area.pack_start(help_label, True, True, 0)
-            
-            # Show the dialog
-            dialog.show_all()
-            dialog.run()
-            dialog.destroy()
-        except Exception as e:
-            self.logger.error(f"Error showing about dialog: {e}")
-            self._show_error_dialog(f"Error showing about dialog: {e}")
-
-    def _on_mode_changed(self, new_mode: ThemeMode, old_mode: Optional[ThemeMode]) -> None:
-        """
-        Handle mode change events.
-        
-        Args:
-            new_mode: New mode that was activated
-            old_mode: Previous mode that was active
-        """
-        try:
-            # Update UI state
-            self._update_ui_state()
-            
-            # Update status label
-            self._status_label.set_markup(f"<small>Switched to {new_mode.value} mode</small>")
-            
-            self.logger.info(f"Mode changed: {old_mode} -> {new_mode}")
-            
-        except Exception as e:
-            self.logger.error(f"Error handling mode change: {e}")
-            self._status_label.set_markup("<small>Error handling mode change</small>")
-
-    def _on_theme_changed(self, theme: ThemeType) -> None:
-        """
-        Handle theme change events.
-        
-        Args:
-            theme: New theme that was applied
-        """
-        try:
-            # Update UI state
-            self._update_ui_state()
-            
-            # Update status label
-            self._status_label.set_markup(f"<small>Switched to {theme.value} theme</small>")
-            
-            self.logger.info(f"Theme changed to: {theme}")
-            
-        except Exception as e:
-            self.logger.error(f"Error handling theme change: {e}")
-            self._status_label.set_markup("<small>Error handling theme change</small>")
-
-    def _on_schedule_status_changed(self, status: Dict[str, Any]) -> None:
-        """
-        Handle schedule status change events.
-        
-        Args:
-            status: Schedule status information
-        """
-        try:
-            # Only update if schedule mode is active
-            current_mode = self._mode_controller.get_current_mode()
-            if current_mode == ThemeMode.SCHEDULE:
-                self._update_schedule_ui(current_mode)
-                
-        except Exception as e:
-            self.logger.error(f"Error handling schedule status change: {e}")
-
-    def _on_location_status_changed(self, status: Dict[str, Any]) -> None:
-        """
-        Handle location status change events.
-        
-        Args:
-            status: Location status information
-        """
-        try:
-            # Only update if location mode is active
-            current_mode = self._mode_controller.get_current_mode()
-            if current_mode == ThemeMode.LOCATION:
-                self._update_location_ui(current_mode)
-                
-        except Exception as e:
-            self.logger.error(f"Error handling location status change: {e}")
-
-    def _on_location_error(self, error_type: str, error_message: str) -> None:
-        """
-        Handle location error events.
-        
-        Args:
-            error_type: Type of error that occurred
-            error_message: Human-readable error message
-        """
-        try:
-            # Show error in status bar
-            self._status_label.set_markup(f"<small>Location error: {error_message}</small>")
-            
-            # Show error dialog for important errors
-            if error_type in ["location_detection_failed", "invalid_coordinates", "api_error"]:
-                self._show_error_dialog(f"Location error: {error_message}")
-                
-            self.logger.error(f"Location error ({error_type}): {error_message}")
-            
-        except Exception as e:
-            self.logger.error(f"Error handling location error: {e}")
-
-    def _on_close_request(self, window: Gtk.Window) -> bool:
-        """
-        Handle window close request.
-        
-        Args:
-            window: Window being closed
-            
-        Returns:
-            False to allow default close behavior
-        """
-        try:
-            # Clean up callbacks
-            self._mode_controller.remove_mode_change_callback(self._on_mode_changed)
-            self._mode_controller.remove_theme_change_callback(self._on_theme_changed)
-            
-            self._schedule_handler.remove_status_callback(self._on_schedule_status_changed)
-            
-            self._location_handler.remove_status_callback(self._on_location_status_changed)
-            self._location_handler.remove_error_callback(self._on_location_error)
-            
-            self.logger.info("Main window closing, callbacks removed")
-            
-        except Exception as e:
-            self.logger.error(f"Error during window close: {e}")
-            
-        return False  # Allow window to close
-
-    def _show_error_dialog(self, message: str) -> None:
-        """
-        Show an error dialog with the given message.
-        
-        Args:
-            message: Error message to display
-        """
-        try:
-            # Create dialog
-            dialog = Gtk.AlertDialog.new(message)
-            dialog.set_modal(True)
-            dialog.set_buttons(["OK"])
-            dialog.set_detail("Please check the application logs for more information.")
-            
-            # Show dialog
-            dialog.show(self)
-            
-        except Exception as e:
-            self.logger.error(f"Error showing error dialog: {e}")
-            # Fall back to status label
-            self._status_label.set_markup(f"<small>Error: {message}</small>")
-
-    def add_css_provider(self) -> None:
-        """Add custom CSS styling for the application."""
-        try:
-            # Create CSS provider
-            provider = Gtk.CssProvider()
-            
-            # Define CSS
-            css = """
-            frame.active-mode-frame {
-                border: 2px solid @accent_color;
-            }
-            """
-            
-            # Load CSS
-            provider.load_from_data(css.encode())
-            
-            # Add provider to default display
-            display = Gdk.Display.get_default()
-            if display:
-                Gtk.StyleContext.add_provider_for_display(
-                    display,
-                    provider,
-                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-                )
-                
-            self.logger.debug("CSS provider added")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to add CSS provider: {e}")
-
-
-# Global main window instance
-_main_window: Optional[MainWindow] = None
-
-
-def get_main_window() -> Optional[MainWindow]:
-    """
-    Get the global main window instance.
-    
-    Returns:
-        MainWindow instance or None if not initialized
-    """
-    return _main_window
-
-
-def create_main_window(
-    application: Gtk.Application,
-    mode_controller: Optional[ModeController] = None,
-) -> MainWindow:
-    """
-    Create and initialize the global main window instance.
-    
-    Args:
-        application: Parent GTK application
-        mode_controller: Mode controller instance
-        
-    Returns:
-        MainWindow instance
-    """
-    global _main_window
-    if _main_window is None:
-        _main_window = MainWindow(application, mode_controller)
-        _main_window.add_css_provider()
-    return _main_window
-
-
-def show_main_window() -> None:
-    """Show the global main window instance."""
-    if _main_window:
-        _main_window.present()
-
-
-def cleanup_main_window() -> None:
-    """Clean up the global main window instance."""
-    global _main_window
-    _main_window = None
