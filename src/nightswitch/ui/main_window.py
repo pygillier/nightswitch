@@ -84,6 +84,9 @@ class MainWindow(Gtk.ApplicationWindow):
         # Update UI based on current state
         self._update_ui_state()
         
+        # Make sure all widgets are visible
+        self.show_all()
+        
         self.logger.info("Main window initialized")
 
     def _setup_ui(self) -> None:
@@ -94,8 +97,8 @@ class MainWindow(Gtk.ApplicationWindow):
             self.set_titlebar(self._header_bar)
             
             # Add about button to header
-            about_button = Gtk.Button()
-            about_button.set_icon_name("help-about-symbolic")
+            about_button = Gtk.Button().new_with_label("About")
+            # about_button.set_icon_name("help-about-symbolic")
             about_button.connect("clicked", self._on_about_clicked)
             self._header_bar.pack_end(about_button)
             
@@ -149,7 +152,7 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Directly control the theme with these buttons</small>")
             description.set_halign(Gtk.Align.START)
-            description.set_wrap(True)
+            # description.set_wrap(True)
             manual_box.pack_start(description, False, False, 0)
             
             # Button box for theme controls
@@ -220,7 +223,7 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes at specific times</small>")
             description.set_halign(Gtk.Align.START)
-            description.set_wrap(True)
+            # description.set_wrap(True)
             schedule_box.pack_start(description, False, False, 0)
             
             # Time settings grid
@@ -310,7 +313,7 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes based on sunrise and sunset times</small>")
             description.set_halign(Gtk.Align.START)
-            description.set_wrap(True)
+            # description.set_wrap(True)
             location_box.pack_start(description, False, False, 0)
             
             # Auto-location switch
@@ -422,7 +425,7 @@ class MainWindow(Gtk.ApplicationWindow):
             self._location_handler.add_error_callback(self._on_location_error)
             
             # Set up window close handler
-            self.connect("close-request", self._on_close_request)
+            # self.connect("close-request", self._on_close_request)
             
             self.logger.debug("Callbacks set up")
             
