@@ -2,13 +2,17 @@
 Ubuntu Budgie theme plugin for Nightswitch.
 
 This plugin provides theme switching functionality for Ubuntu Budgie desktop
-environment using gsettings to control the color scheme preference.
+environment using Gio.Settings to control the color scheme preference.
 """
 
 import os
 import shutil
 import subprocess
 from typing import Any, Dict, List, Optional
+
+import gi
+gi.require_version('Gio', '2.0')
+from gi.repository import Gio
 
 from .base import PluginError, PluginInfo, PluginOperationError, ThemePlugin
 
@@ -17,14 +21,14 @@ class UbuntuBudgiePlugin(ThemePlugin):
     """
     Theme plugin for Ubuntu Budgie desktop environment.
 
-    Uses gsettings to control the 'org.gnome.desktop.interface color-scheme'
+    Uses gsettings to control the 'com.solus-project.budgie-panel.dark-theme'
     setting to switch between light and dark themes.
     """
 
-    GSETTINGS_SCHEMA = "org.gnome.desktop.interface"
-    GSETTINGS_KEY = "color-scheme"
-    DARK_VALUE = "prefer-dark"
-    LIGHT_VALUE = "default"
+    GSETTINGS_SCHEMA = "com.solus-project.budgie-panel"
+    GSETTINGS_KEY = "dark-theme"
+    DARK_VALUE = True
+    LIGHT_VALUE = False
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize the Ubuntu Budgie plugin."""
@@ -246,81 +250,82 @@ class UbuntuBudgiePlugin(ThemePlugin):
 
     def _check_gsettings_schema(self) -> bool:
         """
-        Check if the required GSettings schema is available.
+        Check if the required GSettings schema is available using Gio API.
 
         Returns:
             True if schema is available, False otherwise
         """
         try:
-            result = subprocess.run(
-                ["gsettings", "list-schemas"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-
-            if result.returncode == 0:
-                schemas = result.stdout.strip().split("\n")
-                return self.GSETTINGS_SCHEMA in schemas
-
+            # Get the default GSettings schema source
+            schema_source = Gio.SettingsSchemaSource.get_default()
+            
+            # Check if our schema is installed
+            schema = schema_source.lookup(self.GSETTINGS_SCHEMA, recursive=True)
+            
+            if schema is not None:
+                self.log_debug(f"Found GSettings schema '{self.GSETTINGS_SCHEMA}' using Gio API")
+                
+                # Also verify that the specific key exists
+                if schema.has_key(self.GSETTINGS_KEY):
+                    self.log_debug(f"Schema has key '{self.GSETTINGS_KEY}'")
+                    return True
+                else:
+                    self.log_debug(f"Schema does not have key '{self.GSETTINGS_KEY}'")
+                    return False
+            
+            self.log_debug(f"GSettings schema '{self.GSETTINGS_SCHEMA}' not found using Gio API")
             return False
 
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            self.log_error(f"Error checking GSettings schema: {e}")
+        except Exception as e:
+            self.log_error(f"Error checking GSettings schema with Gio API: {e}")
             return False
 
-    def _set_gsettings_value(self, value: str) -> bool:
+    def _set_gsettings_value(self, value: bool) -> bool:
         """
-        Set the color scheme value using gsettings.
+        Set the color scheme value using Gio.Settings.
 
         Args:
-            value: The color scheme value to set
+            value: The boolean value to set (True for dark, False for light)
 
         Returns:
             True if value was set successfully, False otherwise
         """
         try:
-            result = subprocess.run(
-                ["gsettings", "set", self.GSETTINGS_SCHEMA, self.GSETTINGS_KEY, value],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-
-            if result.returncode == 0:
-                self.log_debug(f"Set {self.GSETTINGS_KEY} to {value}")
+            # Create a Gio.Settings object for the schema
+            settings = Gio.Settings.new(self.GSETTINGS_SCHEMA)
+            
+            # Set the boolean value
+            success = settings.set_boolean(self.GSETTINGS_KEY, value)
+            
+            if success:
+                # Sync changes to ensure they're applied immediately
+                Gio.Settings.sync()
+                self.log_debug(f"Set {self.GSETTINGS_KEY} to {value} using Gio.Settings")
                 return True
             else:
-                self.log_error(f"gsettings set failed: {result.stderr}")
+                self.log_error(f"Failed to set {self.GSETTINGS_KEY} to {value}")
                 return False
 
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            self.log_error(f"Error setting gsettings value: {e}")
+        except Exception as e:
+            self.log_error(f"Error setting value with Gio.Settings: {e}")
             return False
 
-    def _get_gsettings_value(self) -> Optional[str]:
+    def _get_gsettings_value(self) -> Optional[bool]:
         """
-        Get the current color scheme value using gsettings.
+        Get the current color scheme value using Gio.Settings.
 
         Returns:
-            Current color scheme value or None if unable to retrieve
+            Current boolean value or None if unable to retrieve
         """
         try:
-            result = subprocess.run(
-                ["gsettings", "get", self.GSETTINGS_SCHEMA, self.GSETTINGS_KEY],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
+            # Create a Gio.Settings object for the schema
+            settings = Gio.Settings.new(self.GSETTINGS_SCHEMA)
+            
+            # Get the boolean value
+            value = settings.get_boolean(self.GSETTINGS_KEY)
+            self.log_debug(f"Current {self.GSETTINGS_KEY} value: {value}")
+            return value
 
-            if result.returncode == 0:
-                value = result.stdout.strip().strip("'\"")
-                self.log_debug(f"Current {self.GSETTINGS_KEY} value: {value}")
-                return value
-            else:
-                self.log_error(f"gsettings get failed: {result.stderr}")
-                return None
-
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            self.log_error(f"Error getting gsettings value: {e}")
+        except Exception as e:
+            self.log_error(f"Error getting value with Gio.Settings: {e}")
             return None
