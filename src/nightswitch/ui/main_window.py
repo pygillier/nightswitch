@@ -203,7 +203,6 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Directly control the theme with these buttons</small>")
             description.set_halign(Gtk.Align.START)
-            description.set_wrap(True)
             inner_box.pack_start(description, False, False, 0)
             
             # Button box for theme controls
@@ -292,7 +291,6 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes at specific times</small>")
             description.set_halign(Gtk.Align.START)
-            description.set_wrap(True)
             inner_box.pack_start(description, False, False, 0)
             
             # Time settings grid
@@ -400,7 +398,6 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes based on sunrise and sunset times</small>")
             description.set_halign(Gtk.Align.START)
-            description.set_wrap(True)
             inner_box.pack_start(description, False, False, 0)
             
             # Auto-location switch
