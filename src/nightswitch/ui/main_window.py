@@ -770,6 +770,9 @@ class MainWindow(Gtk.ApplicationWindow):
                     self._show_error_dialog(error_msg)
                     return False  # Prevent switch from turning on
                 
+                # Ensure location mode is turned off (exclusivity)
+                self._location_switch.set_active(False)
+                
                 # Enable schedule mode
                 self._status_label.set_markup("<small>Enabling schedule mode...</small>")
                 success = self._mode_controller.set_schedule_mode(dark_time, light_time)
@@ -815,9 +818,15 @@ class MainWindow(Gtk.ApplicationWindow):
                 self._show_error_dialog(error_msg)
                 return
             
+            # Ensure location mode is turned off (exclusivity)
+            self._location_switch.set_active(False)
+            
             # Enable schedule mode
             self._status_label.set_markup("<small>Applying schedule...</small>")
             success = self._mode_controller.set_schedule_mode(dark_time, light_time)
+            
+            # Update schedule switch to reflect the new state
+            self._schedule_switch.set_active(True)
             
             if not success:
                 self._status_label.set_markup("<small>Failed to apply schedule</small>")
@@ -843,6 +852,9 @@ class MainWindow(Gtk.ApplicationWindow):
             if state:
                 # Check if we're using auto or manual location
                 is_auto = self._auto_location_switch.get_active()
+                
+                # Ensure schedule mode is turned off (exclusivity)
+                self._schedule_switch.set_active(False)
                 
                 if is_auto:
                     # Enable location mode with auto-detection
@@ -940,6 +952,9 @@ class MainWindow(Gtk.ApplicationWindow):
             button: Button that was clicked
         """
         try:
+            # Ensure schedule mode is turned off (exclusivity)
+            self._schedule_switch.set_active(False)
+            
             # Check if we're using auto or manual location
             is_auto = self._auto_location_switch.get_active()
             
@@ -947,6 +962,9 @@ class MainWindow(Gtk.ApplicationWindow):
                 # Enable location mode with auto-detection
                 self._status_label.set_markup("<small>Applying auto-location...</small>")
                 success = self._mode_controller.set_location_mode()
+                
+                # Update location switch to reflect the new state
+                self._location_switch.set_active(True)
             else:
                 # Get coordinates from entries
                 try:
@@ -966,6 +984,9 @@ class MainWindow(Gtk.ApplicationWindow):
                 # Enable location mode with manual coordinates
                 self._status_label.set_markup("<small>Applying manual coordinates...</small>")
                 success = self._mode_controller.set_location_mode(latitude, longitude)
+                
+                # Update location switch to reflect the new state
+                self._location_switch.set_active(True)
             
             if not success:
                 self._status_label.set_markup("<small>Failed to apply location settings</small>")
