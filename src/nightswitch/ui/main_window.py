@@ -92,15 +92,43 @@ class MainWindow(Gtk.ApplicationWindow):
     def _setup_ui(self) -> None:
         """Set up the user interface components."""
         try:
-            # Create header bar
+            # Create header bar with modern styling
             self._header_bar = Gtk.HeaderBar()
+            self._header_bar.set_show_close_button(True)  # Show window controls
+            self._header_bar.set_title("Nightswitch")
+            self._header_bar.set_subtitle("Theme Switching Settings")
             self.set_titlebar(self._header_bar)
             
-            # Add about button to header
-            about_button = Gtk.Button().new_with_label("About")
-            # about_button.set_icon_name("help-about-symbolic")
+            # Add about button to header with icon
+            about_button = Gtk.Button()
+            about_icon = Gtk.Image.new_from_icon_name("help-about-symbolic", Gtk.IconSize.BUTTON)
+            about_button.add(about_icon)
+            about_button.set_tooltip_text("About Nightswitch")
             about_button.connect("clicked", self._on_about_clicked)
             self._header_bar.pack_end(about_button)
+            
+            # Add a menu button to header
+            menu_button = Gtk.MenuButton()
+            menu_icon = Gtk.Image.new_from_icon_name("open-menu-symbolic", Gtk.IconSize.BUTTON)
+            menu_button.add(menu_icon)
+            menu_button.set_tooltip_text("Menu")
+            
+            # Create menu for the menu button
+            menu = Gtk.Menu()
+            
+            # Add menu items
+            preferences_item = Gtk.MenuItem.new_with_label("Preferences")
+            preferences_item.connect("clicked", self._on_preferences_clicked)
+            menu.append(preferences_item)
+            
+            help_item = Gtk.MenuItem.new_with_label("Help")
+            help_item.connect("clicked", self._on_help_clicked)
+            menu.append(help_item)
+            
+            menu.show_all()
+            menu_button.set_popup(menu)
+            
+            self._header_bar.pack_end(menu_button)
             
             # Main container with padding
             outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -900,6 +928,190 @@ class MainWindow(Gtk.ApplicationWindow):
             # Show dialog
             dialog.show()
             
+        except Exception as e:
+            self.logger.error(f"Error showing about dialog: {e}")
+            
+    def _on_preferences_clicked(self, menu_item: Gtk.MenuItem) -> None:
+        """
+        Handle preferences menu item click.
+        
+        Args:
+            menu_item: Menu item that was clicked
+        """
+        try:
+            self._show_preferences_dialog()
+            self.logger.debug("Preferences dialog requested")
+        except Exception as e:
+            self.logger.error(f"Error showing preferences dialog: {e}")
+            
+    def _on_help_clicked(self, menu_item: Gtk.MenuItem) -> None:
+        """
+        Handle help menu item click.
+        
+        Args:
+            menu_item: Menu item that was clicked
+        """
+        try:
+            self._show_help_dialog()
+            self.logger.debug("Help dialog requested")
+        except Exception as e:
+            self.logger.error(f"Error showing help dialog: {e}")
+            
+    def _show_preferences_dialog(self) -> None:
+        """Show the preferences dialog."""
+        dialog = Gtk.Dialog(
+            title="Preferences",
+            parent=self,
+            flags=Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+            buttons=(
+                "Cancel", Gtk.ResponseType.CANCEL,
+                "Save", Gtk.ResponseType.APPLY
+            )
+        )
+        dialog.set_default_size(350, 300)
+        
+        # Create content area
+        content_area = dialog.get_content_area()
+        content_area.set_spacing(10)
+        content_area.set_margin_start(12)
+        content_area.set_margin_end(12)
+        content_area.set_margin_top(12)
+        content_area.set_margin_bottom(12)
+        
+        # Create notebook for tabs
+        notebook = Gtk.Notebook()
+        content_area.pack_start(notebook, True, True, 0)
+        
+        # General settings tab
+        general_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        general_box.set_margin_start(12)
+        general_box.set_margin_end(12)
+        general_box.set_margin_top(12)
+        general_box.set_margin_bottom(12)
+        notebook.append_page(general_box, Gtk.Label(label="General"))
+        
+        # Start minimized option
+        start_min_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        start_min_label = Gtk.Label(label="Start minimized to tray")
+        start_min_label.set_halign(Gtk.Align.START)
+        start_min_label.set_hexpand(True)
+        start_min_switch = Gtk.Switch()
+        start_min_switch.set_active(True)  # Default to true
+        
+        start_min_box.pack_start(start_min_label, True, True, 0)
+        start_min_box.pack_start(start_min_switch, False, False, 0)
+        general_box.pack_start(start_min_box, False, False, 0)
+        
+        # Show notifications option
+        notif_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        notif_label = Gtk.Label(label="Show notifications")
+        notif_label.set_halign(Gtk.Align.START)
+        notif_label.set_hexpand(True)
+        notif_switch = Gtk.Switch()
+        notif_switch.set_active(True)  # Default to true
+        
+        notif_box.pack_start(notif_label, True, True, 0)
+        notif_box.pack_start(notif_switch, False, False, 0)
+        general_box.pack_start(notif_box, False, False, 0)
+        
+        # Autostart option
+        autostart_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        autostart_label = Gtk.Label(label="Start on system boot")
+        autostart_label.set_halign(Gtk.Align.START)
+        autostart_label.set_hexpand(True)
+        autostart_switch = Gtk.Switch()
+        autostart_switch.set_active(False)  # Default to false
+        
+        autostart_box.pack_start(autostart_label, True, True, 0)
+        autostart_box.pack_start(autostart_switch, False, False, 0)
+        general_box.pack_start(autostart_box, False, False, 0)
+        
+        # Advanced settings tab
+        advanced_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        advanced_box.set_margin_start(12)
+        advanced_box.set_margin_end(12)
+        advanced_box.set_margin_top(12)
+        advanced_box.set_margin_bottom(12)
+        notebook.append_page(advanced_box, Gtk.Label(label="Advanced"))
+        
+        # Log level option
+        log_level_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        log_level_label = Gtk.Label(label="Log Level")
+        log_level_label.set_halign(Gtk.Align.START)
+        log_level_combo = Gtk.ComboBoxText()
+        for level in ["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]:
+            log_level_combo.append_text(level)
+        log_level_combo.set_active(0)  # Default to INFO
+        
+        log_level_box.pack_start(log_level_label, False, False, 0)
+        log_level_box.pack_start(log_level_combo, True, True, 0)
+        advanced_box.pack_start(log_level_box, False, False, 0)
+        
+        # Debug mode option
+        debug_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        debug_label = Gtk.Label(label="Debug Mode")
+        debug_label.set_halign(Gtk.Align.START)
+        debug_label.set_hexpand(True)
+        debug_switch = Gtk.Switch()
+        debug_switch.set_active(False)  # Default to false
+        
+        debug_box.pack_start(debug_label, True, True, 0)
+        debug_box.pack_start(debug_switch, False, False, 0)
+        advanced_box.pack_start(debug_box, False, False, 0)
+        
+        # Show the dialog
+        dialog.show_all()
+        
+        # Handle response
+        response = dialog.run()
+        if response == Gtk.ResponseType.APPLY:
+            # Save preferences
+            self.logger.info("Saving preferences")
+            # TODO: Implement saving preferences
+        
+        dialog.destroy()
+            
+    def _show_help_dialog(self) -> None:
+        """Show the help dialog."""
+        dialog = Gtk.Dialog(
+            title="Help",
+            parent=self,
+            flags=Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+            buttons=("Close", Gtk.ResponseType.CLOSE)
+        )
+        dialog.set_default_size(400, 300)
+        
+        # Create content area
+        content_area = dialog.get_content_area()
+        content_area.set_spacing(10)
+        content_area.set_margin_start(12)
+        content_area.set_margin_end(12)
+        content_area.set_margin_top(12)
+        content_area.set_margin_bottom(12)
+        
+        # Add help content
+        help_label = Gtk.Label()
+        help_label.set_markup(
+            "<b>Nightswitch Help</b>\n\n"
+            "<b>Manual Mode:</b>\n"
+            "Directly control the theme with the Dark/Light buttons.\n\n"
+            "<b>Schedule Mode:</b>\n"
+            "Set specific times to automatically switch between dark and light themes.\n\n"
+            "<b>Location Mode:</b>\n"
+            "Automatically switch themes based on sunrise and sunset times for your location.\n\n"
+            "<b>System Tray:</b>\n"
+            "Use the system tray icon to quickly toggle themes or access settings."
+        )
+        help_label.set_line_wrap(True)
+        help_label.set_halign(Gtk.Align.START)
+        help_label.set_valign(Gtk.Align.START)
+        
+        content_area.pack_start(help_label, True, True, 0)
+        
+        # Show the dialog
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
         except Exception as e:
             self.logger.error(f"Error showing about dialog: {e}")
             self._show_error_dialog(f"Error showing about dialog: {e}")
