@@ -88,7 +88,7 @@ class SystemTrayIcon:
             self._indicator = appindicator.Indicator.new(
                 "nightswitch",
                 "applications-system",  # Default icon name
-                AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+                appindicator.IndicatorCategory.APPLICATION_STATUS
             )
             self.logger.debug("Indicator instance created")
             
@@ -96,7 +96,7 @@ class SystemTrayIcon:
             self._update_icon()
             
             # Set status to active
-            self._indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+            self._indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
             
             self.logger.info("AppIndicator3 tray icon created")
             
@@ -159,8 +159,8 @@ class SystemTrayIcon:
         """
         Create a menu structure for AppIndicator3.
         
-        This method creates a menu structure that works with AppIndicator3
-        in a GTK 3 environment.
+        This method creates a simplified menu structure with only three options:
+        Toggle Mode, Open Settings, and Quit.
         
         Returns:
             A menu object compatible with AppIndicator3
@@ -177,49 +177,21 @@ class SystemTrayIcon:
             # Separator
             menu.append(Gtk.SeparatorMenuItem())
             
-            # Theme switching section (only active in manual mode)
-            dark_item = Gtk.MenuItem(label="Switch to Dark")
-            dark_item.connect("activate", self._on_switch_to_dark)
-            menu.append(dark_item)
-            self._theme_items["dark"] = dark_item
-            
-            light_item = Gtk.MenuItem(label="Switch to Light")
-            light_item.connect("activate", self._on_switch_to_light)
-            menu.append(light_item)
-            self._theme_items["light"] = light_item
-            
-            toggle_item = Gtk.MenuItem(label="Toggle Theme")
+            # Toggle Mode item
+            toggle_item = Gtk.MenuItem(label="Toggle Mode")
             toggle_item.connect("activate", self._on_toggle_theme)
             menu.append(toggle_item)
             self._theme_items["toggle"] = toggle_item
             
-            # Separator
-            menu.append(Gtk.SeparatorMenuItem())
-            
-            # Mode switching section
-            manual_item = Gtk.MenuItem(label="Manual Mode")
-            manual_item.connect("activate", self._on_manual_mode)
-            menu.append(manual_item)
-            self._mode_items["manual"] = manual_item
-            
-            schedule_item = Gtk.MenuItem(label="Schedule Mode")
-            schedule_item.connect("activate", self._on_schedule_mode)
-            menu.append(schedule_item)
-            self._mode_items["schedule"] = schedule_item
-            
-            location_item = Gtk.MenuItem(label="Location Mode")
-            location_item.connect("activate", self._on_location_mode)
-            menu.append(location_item)
-            self._mode_items["location"] = location_item
+            # Open Settings item (same as Show Window)
+            settings_item = Gtk.MenuItem(label="Open Settings")
+            settings_item.connect("activate", self._on_show_window)
+            menu.append(settings_item)
             
             # Separator
             menu.append(Gtk.SeparatorMenuItem())
             
-            # Application section
-            show_window_item = Gtk.MenuItem(label="Show Window")
-            show_window_item.connect("activate", self._on_show_window)
-            menu.append(show_window_item)
-            
+            # Quit item
             quit_item = Gtk.MenuItem(label="Quit")
             quit_item.connect("activate", self._on_quit)
             menu.append(quit_item)
@@ -227,7 +199,7 @@ class SystemTrayIcon:
             # Show all menu items
             menu.show_all()
             
-            self.logger.debug("Created AppIndicator3 menu structure")
+            self.logger.debug("Created simplified AppIndicator3 menu structure")
             return menu
             
         except Exception as e:
@@ -352,7 +324,7 @@ class SystemTrayIcon:
         """Show the tray icon."""
         try:
             if self._indicator:
-                self._indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+                self._indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
                 self._is_visible = True
                 self.logger.info("Tray icon shown")
             else:
@@ -365,7 +337,7 @@ class SystemTrayIcon:
         """Hide the tray icon."""
         try:
             if self._indicator:
-                self._indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
+                self._indicator.set_status(appindicator.IndicatorStatus.PASSIVE)
                 self._is_visible = False
                 self.logger.info("Tray icon hidden")
 
