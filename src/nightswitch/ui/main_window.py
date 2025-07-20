@@ -142,14 +142,19 @@ class MainWindow(Gtk.ApplicationWindow):
             content_box.set_margin_bottom(16)
             outer_box.pack_start(content_box, True, True, 0)
             
-            # Main vertical box for content
-            self._main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
-            content_box.pack_start(self._main_box, True, True, 0)
+            # Create a notebook for tabs
+            self._notebook = Gtk.Notebook()
+            self._notebook.set_tab_pos(Gtk.PositionType.TOP)
+            content_box.pack_start(self._notebook, True, True, 0)
             
-            # Create mode groups
-            self._create_manual_group()
-            self._create_schedule_group()
-            self._create_location_group()
+            # Create mode tabs
+            self._create_manual_tab()
+            self._create_schedule_tab()
+            self._create_location_tab()
+            
+            # Main vertical box for status bar
+            self._main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            content_box.pack_start(self._main_box, False, False, 0)
             
             # Add status bar at bottom
             self._create_status_bar()
@@ -160,33 +165,51 @@ class MainWindow(Gtk.ApplicationWindow):
             self.logger.error(f"Failed to set up UI: {e}")
             raise
 
-    def _create_manual_group(self) -> None:
-        """Create manual mode button group with Dark/Light options."""
+    def _create_manual_tab(self) -> None:
+        """Create manual mode tab with Dark/Light options."""
         try:
-            # Create frame with label
-            frame = Gtk.Frame()
-            frame.set_label("Manual Mode")
-            self._main_box.pack_start(frame, False, True, 0)
-            
             # Container for manual controls
             manual_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             manual_box.set_margin_start(12)
             manual_box.set_margin_end(12)
             manual_box.set_margin_top(12)
             manual_box.set_margin_bottom(12)
-            frame.add(manual_box)
+            
+            # Create tab label with icon
+            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            icon = Gtk.Image.new_from_icon_name("preferences-desktop-theme-symbolic", Gtk.IconSize.MENU)
+            label = Gtk.Label(label="Manual Mode")
+            tab_label.pack_start(icon, False, False, 0)
+            tab_label.pack_start(label, False, False, 0)
+            tab_label.show_all()
+            
+            # Add the tab to the notebook
+            self._notebook.append_page(manual_box, tab_label)
+            
+            # Create frame for visual grouping
+            frame = Gtk.Frame()
+            frame.set_shadow_type(Gtk.ShadowType.NONE)
+            manual_box.pack_start(frame, True, True, 0)
+            
+            # Container inside frame
+            inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            inner_box.set_margin_start(12)
+            inner_box.set_margin_end(12)
+            inner_box.set_margin_top(12)
+            inner_box.set_margin_bottom(12)
+            frame.add(inner_box)
             
             # Description label
             description = Gtk.Label()
             description.set_markup("<small>Directly control the theme with these buttons</small>")
             description.set_halign(Gtk.Align.START)
-            # description.set_wrap(True)
-            manual_box.pack_start(description, False, False, 0)
+            description.set_wrap(True)
+            inner_box.pack_start(description, False, False, 0)
             
             # Button box for theme controls
             button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             button_box.set_halign(Gtk.Align.CENTER)
-            manual_box.pack_start(button_box, False, False, 0)
+            inner_box.pack_start(button_box, False, False, 0)
             
             # Dark theme button
             dark_button = Gtk.Button(label="Dark Theme")
@@ -205,7 +228,7 @@ class MainWindow(Gtk.ApplicationWindow):
             toggle_button.connect("clicked", self._on_toggle_button_clicked)
             toggle_button.set_margin_top(8)
             toggle_button.set_hexpand(True)
-            manual_box.pack_start(toggle_button, False, False, 0)
+            inner_box.pack_start(toggle_button, False, False, 0)
             
             # Store reference to group
             self._manual_group = frame
@@ -216,26 +239,44 @@ class MainWindow(Gtk.ApplicationWindow):
             self.logger.error(f"Failed to create manual group: {e}")
             raise
 
-    def _create_schedule_group(self) -> None:
-        """Create schedule mode toggle group with time input fields."""
+    def _create_schedule_tab(self) -> None:
+        """Create schedule mode tab with time input fields."""
         try:
-            # Create frame with label
-            frame = Gtk.Frame()
-            frame.set_label("Schedule Mode")
-            self._main_box.pack_start(frame, False, True, 0)
-            
             # Container for schedule controls
             schedule_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             schedule_box.set_margin_start(12)
             schedule_box.set_margin_end(12)
             schedule_box.set_margin_top(12)
             schedule_box.set_margin_bottom(12)
-            frame.add(schedule_box)
+            
+            # Create tab label with icon
+            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            icon = Gtk.Image.new_from_icon_name("appointment-soon-symbolic", Gtk.IconSize.MENU)
+            label = Gtk.Label(label="Schedule Mode")
+            tab_label.pack_start(icon, False, False, 0)
+            tab_label.pack_start(label, False, False, 0)
+            tab_label.show_all()
+            
+            # Add the tab to the notebook
+            self._notebook.append_page(schedule_box, tab_label)
+            
+            # Create frame for visual grouping
+            frame = Gtk.Frame()
+            frame.set_shadow_type(Gtk.ShadowType.NONE)
+            schedule_box.pack_start(frame, True, True, 0)
+            
+            # Container inside frame
+            inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            inner_box.set_margin_start(12)
+            inner_box.set_margin_end(12)
+            inner_box.set_margin_top(12)
+            inner_box.set_margin_bottom(12)
+            frame.add(inner_box)
             
             # Enable switch row
             switch_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             switch_box.set_margin_bottom(8)
-            schedule_box.pack_start(switch_box, False, True, 0)
+            inner_box.pack_start(switch_box, False, True, 0)
             
             switch_label = Gtk.Label(label="Enable Schedule Mode")
             switch_label.set_hexpand(True)
@@ -251,14 +292,14 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes at specific times</small>")
             description.set_halign(Gtk.Align.START)
-            # description.set_wrap(True)
-            schedule_box.pack_start(description, False, False, 0)
+            description.set_wrap(True)
+            inner_box.pack_start(description, False, False, 0)
             
             # Time settings grid
             grid = Gtk.Grid()
             grid.set_column_spacing(12)
             grid.set_row_spacing(8)
-            schedule_box.pack_start(grid, False, False, 0)
+            inner_box.pack_start(grid, False, False, 0)
             
             # Dark time row
             dark_label = Gtk.Label(label="Switch to Dark:")
@@ -288,14 +329,14 @@ class MainWindow(Gtk.ApplicationWindow):
             apply_button = Gtk.Button(label="Apply Schedule")
             apply_button.connect("clicked", self._on_apply_schedule_clicked)
             apply_button.set_margin_top(8)
-            schedule_box.pack_start(apply_button, False, False, 0)
+            inner_box.pack_start(apply_button, False, False, 0)
             
             # Next trigger info label
             self._next_schedule_label = Gtk.Label()
             self._next_schedule_label.set_markup("<small>No schedule active</small>")
             self._next_schedule_label.set_halign(Gtk.Align.START)
             self._next_schedule_label.set_margin_top(4)
-            schedule_box.pack_start(self._next_schedule_label, False, False, 0)
+            inner_box.pack_start(self._next_schedule_label, False, False, 0)
             
             # Store reference to group
             self._schedule_group = frame
@@ -306,26 +347,44 @@ class MainWindow(Gtk.ApplicationWindow):
             self.logger.error(f"Failed to create schedule group: {e}")
             raise
 
-    def _create_location_group(self) -> None:
-        """Create location mode toggle group with settings interface."""
+    def _create_location_tab(self) -> None:
+        """Create location mode tab with settings interface."""
         try:
-            # Create frame with label
-            frame = Gtk.Frame()
-            frame.set_label("Location Mode")
-            self._main_box.pack_start(frame, False, True, 0)
-            
             # Container for location controls
             location_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             location_box.set_margin_start(12)
             location_box.set_margin_end(12)
             location_box.set_margin_top(12)
             location_box.set_margin_bottom(12)
-            frame.add(location_box)
+            
+            # Create tab label with icon
+            tab_label = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            icon = Gtk.Image.new_from_icon_name("mark-location-symbolic", Gtk.IconSize.MENU)
+            label = Gtk.Label(label="Location Mode")
+            tab_label.pack_start(icon, False, False, 0)
+            tab_label.pack_start(label, False, False, 0)
+            tab_label.show_all()
+            
+            # Add the tab to the notebook
+            self._notebook.append_page(location_box, tab_label)
+            
+            # Create frame for visual grouping
+            frame = Gtk.Frame()
+            frame.set_shadow_type(Gtk.ShadowType.NONE)
+            location_box.pack_start(frame, True, True, 0)
+            
+            # Container inside frame
+            inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            inner_box.set_margin_start(12)
+            inner_box.set_margin_end(12)
+            inner_box.set_margin_top(12)
+            inner_box.set_margin_bottom(12)
+            frame.add(inner_box)
             
             # Enable switch row
             switch_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             switch_box.set_margin_bottom(8)
-            location_box.pack_start(switch_box, False, True, 0)
+            inner_box.pack_start(switch_box, False, True, 0)
             
             switch_label = Gtk.Label(label="Enable Location Mode")
             switch_label.set_hexpand(True)
@@ -341,12 +400,12 @@ class MainWindow(Gtk.ApplicationWindow):
             description = Gtk.Label()
             description.set_markup("<small>Automatically switch themes based on sunrise and sunset times</small>")
             description.set_halign(Gtk.Align.START)
-            # description.set_wrap(True)
-            location_box.pack_start(description, False, False, 0)
+            description.set_wrap(True)
+            inner_box.pack_start(description, False, False, 0)
             
             # Auto-location switch
             auto_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            location_box.pack_start(auto_box, False, True, 0)
+            inner_box.pack_start(auto_box, False, True, 0)
             
             auto_label = Gtk.Label(label="Auto-detect Location")
             auto_label.set_hexpand(True)
@@ -364,7 +423,7 @@ class MainWindow(Gtk.ApplicationWindow):
             coords_grid.set_column_spacing(12)
             coords_grid.set_row_spacing(8)
             coords_grid.set_margin_top(8)
-            location_box.pack_start(coords_grid, False, False, 0)
+            inner_box.pack_start(coords_grid, False, False, 0)
             
             # Latitude row
             lat_label = Gtk.Label(label="Latitude:")
@@ -390,21 +449,21 @@ class MainWindow(Gtk.ApplicationWindow):
             apply_button = Gtk.Button(label="Apply Location")
             apply_button.connect("clicked", self._on_apply_location_clicked)
             apply_button.set_margin_top(8)
-            location_box.pack_start(apply_button, False, False, 0)
+            inner_box.pack_start(apply_button, False, False, 0)
             
             # Location info label
             self._location_info_label = Gtk.Label()
             self._location_info_label.set_markup("<small>No location detected</small>")
             self._location_info_label.set_halign(Gtk.Align.START)
             self._location_info_label.set_margin_top(4)
-            location_box.pack_start(self._location_info_label, False, False, 0)
+            inner_box.pack_start(self._location_info_label, False, False, 0)
             
             # Next event info label
             self._next_event_label = Gtk.Label()
             self._next_event_label.set_markup("<small>No sunrise/sunset data available</small>")
             self._next_event_label.set_halign(Gtk.Align.START)
             self._next_event_label.set_margin_top(4)
-            location_box.pack_start(self._next_event_label, False, False, 0)
+            inner_box.pack_start(self._next_event_label, False, False, 0)
             
             # Store reference to group
             self._location_group = frame
