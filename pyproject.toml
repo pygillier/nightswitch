@@ -126,5 +126,6 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "build>=1.2.2.post1",
     "pygobject-stubs>=2.13.0",
 ]

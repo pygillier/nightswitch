@@ -82,7 +82,7 @@ tasks:
   build:
     desc: Build the package
     cmds:
-      - "{{.PYTHON_CMD}} -m build"
+      - uv build
 
   autostart:enable:
     desc: Enable autostart for the application

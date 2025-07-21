@@ -102,29 +102,6 @@ class MainWindow(Gtk.ApplicationWindow):
             about_button.connect("clicked", self._on_about_clicked)
             self._header_bar.pack_end(about_button)
             
-            # Add a menu button to header
-            menu_button = Gtk.MenuButton()
-            menu_icon = Gtk.Image.new_from_icon_name("open-menu-symbolic", Gtk.IconSize.BUTTON)
-            menu_button.add(menu_icon)
-            menu_button.set_tooltip_text("Menu")
-            
-            # Create menu for the menu button
-            menu = Gtk.Menu()
-            
-            # Add menu items
-            preferences_item = Gtk.MenuItem.new_with_label("Preferences")
-            preferences_item.connect("activate", self._on_preferences_clicked)
-            menu.append(preferences_item)
-            
-            help_item = Gtk.MenuItem.new_with_label("Help")
-            help_item.connect("activate", self._on_help_clicked)
-            menu.append(help_item)
-            
-            menu.show_all()
-            menu_button.set_popup(menu)
-            
-            self._header_bar.pack_end(menu_button)
-            
             # Main container with padding
             outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
             self.add(outer_box)
@@ -377,29 +354,7 @@ class MainWindow(Gtk.ApplicationWindow):
         """
         show_about_dialog(self)
             
-    def _on_preferences_clicked(self, menu_item: Gtk.MenuItem) -> None:
-        """
-        Handle preferences menu item click.
-        
-        Args:
-            menu_item: Menu item that was clicked
-        """
-        try:
-            # Switch to the preferences tab
-            self._notebook.set_current_page(3)  # Preferences is the 4th tab (index 3)
-            self.present()  # Make sure window is visible and focused
-            self.logger.debug("Switched to preferences tab")
-        except Exception as e:
-            self.logger.error(f"Error switching to preferences tab: {e}")
-            
-    def _on_help_clicked(self, menu_item: Gtk.MenuItem) -> None:
-        """
-        Handle help menu item click.
-        
-        Args:
-            menu_item: Menu item that was clicked
-        """
-        show_help_dialog(self)
+    # Menu item handlers removed as part of UI simplification
             
     def _save_preferences(self, preferences: Dict[str, Any]) -> None:
         """

@@ -119,3 +119,11 @@
   - Create settings migration system for future versions
   - Write tests for settings persistence across application restarts
   - _Requirements: 6.1, 6.2, 6.3_
+
+- [x] 18. Simplify UI by removing menu button
+  - Remove menu button from the headerbar
+  - Remove code behind menu items (preferences and help)
+  - Move help functionality to about dialog
+  - Add preferences tab directly to the notebook
+  - Update UI tests to reflect the simplified interface
+  - _Requirements: 1.3_
